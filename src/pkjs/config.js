@@ -6,6 +6,9 @@
 //   Date        0 never, 1 on wrist flick, 2 always
 //   Accent      0 white, 1 grey, 2 red, 3 blue, 4 custom
 //   AccentCustom colour picker, used when Accent is custom
+// The watch accepts integers only, so every radiogroup/select below must keep
+// serializeValueAs: 'integer' (Clay would otherwise send the value as text,
+// and the watch would ignore it).
 
 var SHOW_OPTIONS = [
   { label: 'Never', value: '0' },
