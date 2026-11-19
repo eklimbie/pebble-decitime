@@ -34,14 +34,14 @@
             "chalk",
             "diorite",
             "emery",
-            "gabbro",
-            "flint"
+            "flint",
+            "gabbro"
         ],
-        "usesPermissions": [],
         "uuid": "8ec58b92-d237-4430-92b5-707d0879b9c1",
         "watchapp": {
             "watchface": true
         }
     },
+    "private": true,
     "version": "3.1.0"
 }
