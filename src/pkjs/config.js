@@ -66,7 +66,7 @@ module.exports = [
       },
       {
         type: 'text',
-        defaultValue: 'A wrist flick shows items set to "On wrist flick" for 100 decimal seconds (86.4 s).'
+        defaultValue: 'A wrist flick shows items set to "On wrist flick" for 50 decimal seconds (43.2 s).'
       },
       {
         type: 'select',

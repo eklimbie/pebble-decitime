@@ -91,7 +91,7 @@
 #define ACCENT_BLUE   3
 #define ACCENT_CUSTOM 4
 
-#define FLICK_DURATION_S 87  // ~100 decimal seconds (86.4 s)
+#define FLICK_DURATION_S 43  // ~50 decimal seconds (43.2 s)
 
 // Settings are saved on the watch's flash under this key. If the layout of
 // the Settings struct ever changes, bump SETTINGS_VERSION: old saved data is
