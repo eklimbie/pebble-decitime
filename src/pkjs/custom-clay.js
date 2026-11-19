@@ -3,6 +3,8 @@
 // - "First hour of the day" only applies to the digital style.
 // - The custom colour picker only applies when Accent is "Custom".
 // With serializeValueAs: 'integer', get() returns a number, so compare as strings.
+// Clay calls this with `this` set to the page's ClayConfig; `minified` is its
+// bundled DOM helper library, unused here.
 module.exports = function (minified) {
   var clayConfig = this;
 
