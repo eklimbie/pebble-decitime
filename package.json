@@ -1,0 +1,51 @@
+{
+    "author": "Ewout",
+    "dependencies": {
+        "@rebble/clay": "^1.1.0"
+    },
+    "keywords": [
+        "pebble-app"
+    ],
+    "name": "decimal-time",
+    "pebble": {
+        "capabilities": [
+            "configurable"
+        ],
+        "displayName": "Decimal Time",
+        "enableMultiJS": true,
+        "manifestVersion": 2,
+        "messageKeys": [
+            "Style",
+            "HourZero",
+            "Seconds",
+            "NormalTime",
+            "Date",
+            "Accent",
+            "AccentCustom"
+        ],
+        "projectType": "native",
+        "resources": {
+            "media": []
+        },
+        "sdkVersion": "3",
+        "targetPlatforms": [
+            "aplite",
+            "basalt",
+            "chalk",
+            "diorite",
+            "emery",
+            "flint",
+            "gabbro"
+        ],
+        "usesPermissions": [
+            "Internet",
+            "Location",
+            "Timeline"
+        ],
+        "uuid": "8ec58b92-d237-4430-92b5-707d0879b9c1",
+        "watchapp": {
+            "watchface": true
+        }
+    },
+    "version": "3.0.0"
+}
