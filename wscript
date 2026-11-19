@@ -1,15 +1,12 @@
 #
-# This file is the default set of rules to compile a Pebble project.
+# Build rules for the Pebble SDK's build tool (waf). `pebble build` runs this.
+# It is the SDK's standard project wscript; there is normally nothing to change.
 #
-# Feel free to customize this to your needs.
+# For every platform in package.json's targetPlatforms it compiles src/c/ into
+# an app binary, then bundles all binaries plus the phone-side JavaScript in
+# src/pkjs/ into one .pbw file in build/.
 #
-
 import os.path
-try:
-    from sh import CommandNotFound, jshint, cat, ErrorReturnCode_2
-    hint = jshint
-except (ImportError, Exception):
-    hint = None
 
 top = '.'
 out = 'build'
@@ -24,34 +21,33 @@ def configure(ctx):
 
 
 def build(ctx):
-    if False and hint is not None:
-        try:
-            hint(['--config', 'pebble-jshintrc'] + [node.abspath() for node in ctx.path.ant_glob("src/**/*.js")], _tty_out=False) # no tty because there are none in the cloudpebble sandbox.
-        except ErrorReturnCode_2 as e:
-            ctx.fatal("\nJavaScript linting failed (you can disable this in Project Settings):\n" + e.stdout)
-
     ctx.load('pebble_sdk')
 
     build_worker = os.path.exists('worker_src')
     binaries = []
 
-    for p in ctx.env.TARGET_PLATFORMS:
-        ctx.set_env(ctx.all_envs[p])
+    # Each platform has its own settings (compiler flags, headers); switch to
+    # them per platform and switch back afterwards for the bundle step.
+    cached_env = ctx.env
+    for platform in ctx.env.TARGET_PLATFORMS:
+        ctx.env = ctx.all_envs[platform]
         ctx.set_group(ctx.env.PLATFORM_NAME)
         app_elf = '{}/pebble-app.elf'.format(ctx.env.BUILD_DIR)
-        ctx.pbl_program(source=ctx.path.ant_glob('src/c/**/*.c'), target=app_elf)
+        ctx.pbl_build(source=ctx.path.ant_glob('src/c/**/*.c'),
+                      target=app_elf, bin_type='app')
 
         if build_worker:
             worker_elf = '{}/pebble-worker.elf'.format(ctx.env.BUILD_DIR)
-            binaries.append({'platform': p, 'app_elf': app_elf, 'worker_elf': worker_elf})
-            ctx.pbl_worker(source=ctx.path.ant_glob('worker_src/c/**/*.c'), target=worker_elf)
+            binaries.append({'platform': platform, 'app_elf': app_elf,
+                             'worker_elf': worker_elf})
+            ctx.pbl_build(source=ctx.path.ant_glob('worker_src/c/**/*.c'),
+                          target=worker_elf, bin_type='worker')
         else:
-            binaries.append({'platform': p, 'app_elf': app_elf})
-
-    ctx(features='subst',
-        source='package.json',
-        target='js/package.json',
-        is_copy=True)
+            binaries.append({'platform': platform, 'app_elf': app_elf})
+    ctx.env = cached_env
 
     ctx.set_group('bundle')
-    ctx.pbl_bundle(binaries=binaries, js=ctx.path.ant_glob(['src/pkjs/**/*.js', 'src/pkjs/**/*.json']), js_entry_file='src/pkjs/index.js')
+    ctx.pbl_bundle(binaries=binaries,
+                   js=ctx.path.ant_glob(['src/pkjs/**/*.js',
+                                         'src/pkjs/**/*.json']),
+                   js_entry_file='src/pkjs/index.js')
