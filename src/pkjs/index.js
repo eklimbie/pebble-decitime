@@ -4,10 +4,15 @@
 var Clay = require('@rebble/clay');
 var clayConfig = require('./config');
 var customClay = require('./custom-clay');
- 
+var clayComponents = require('./clay-components');
+
 // We open the page and receive its result ourselves (Clay's documented
 // "autoHandleEvents: false" mode) so the page also works in the emulator.
 var clay = new Clay(clayConfig, customClay, { autoHandleEvents: false });
+// The accent colour grid and the Restore defaults / Save row.
+clayComponents.forEach(function (component) {
+  clay.registerComponent(component);
+});
  
 // In the emulator (Pebble.platform === 'pypkjs') Clay sends its page through
 // Pebble's old helper page on Amazon S3, which has been offline for years, so

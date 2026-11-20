@@ -1,33 +1,23 @@
 {
+    "//": [
+        "pebble.projectType: kind of project the SDK builds.",
+        "native = C app (default if omitted); also package, rocky, moddable, plugin."
+    ],
+    "name": "decimal-time",
     "author": "Ewout",
-    "dependencies": {
-        "@rebble/clay": "^1.1.0"
-    },
+    "version": "1.5.0",
     "keywords": [
         "pebble-app"
     ],
-    "name": "decimal-time",
+    "private": true,
+    "dependencies": {
+        "@rebble/clay": "^1.1.0"
+    },
     "pebble": {
-        "capabilities": [
-            "configurable"
-        ],
         "displayName": "Decimal Time",
-        "enableMultiJS": true,
-        "manifestVersion": 2,
-        "messageKeys": [
-            "Style",
-            "HourZero",
-            "Seconds",
-            "NormalTime",
-            "Date",
-            "Accent",
-            "AccentCustom"
-        ],
-        "projectType": "native",
-        "resources": {
-            "media": []
-        },
+        "uuid": "8ec58b92-d237-4430-92b5-707d0879b9c1",
         "sdkVersion": "3",
+        "enableMultiJS": true,
         "targetPlatforms": [
             "aplite",
             "basalt",
@@ -37,11 +27,26 @@
             "flint",
             "gabbro"
         ],
-        "uuid": "8ec58b92-d237-4430-92b5-707d0879b9c1",
         "watchapp": {
             "watchface": true
-        }
-    },
-    "private": true,
-    "version": "1.5.0"
+        },
+        "messageKeys": [
+            "Style",
+            "HourZero",
+            "Seconds",
+            "NormalTime",
+            "Date",
+            "Accent",
+            "AccentCustom"
+        ],
+        "resources": {
+            "media": []
+        },
+        "capabilities": [
+            "configurable"
+        ],
+        "manifestVersion": 2,
+        "projectType": "native"
+    }
+    
 }

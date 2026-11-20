@@ -6,7 +6,7 @@
 //   Date        0 never, 1 on wrist flick, 2 always
 //   Accent      0 white, 1 grey, 2 red, 3 blue, 4 custom
 //   AccentCustom colour picker, used when Accent is custom
-// The watch accepts integers only, so every radiogroup/select below must keep
+// The watch accepts integers only, so every radiogroup/swatchgroup/select below must keep
 // serializeValueAs: 'integer' (Clay would otherwise send the value as text,
 // and the watch would ignore it).
 
@@ -104,19 +104,24 @@ module.exports = [
         defaultValue: 'Accent colour'
       },
       {
-        type: 'radiogroup',
+        // Custom component (clay-components.js): a 2x2 grid of colour squares
+        // with a "Custom" square centred below, showing the AccentCustom colour.
+        // The AccentCustom row below is moved up under the squares on the page.
+        // Each color is what the watch draws for that choice, see
+        // accent_color() in decimal_time.c.
+        type: 'swatchgroup',
         messageKey: 'Accent',
         label: 'Accent',
         description: 'Hour marks and second hand on the dial; the day bar on the digital display.',
         defaultValue: '1',
         serializeValueAs: 'integer',
         options: [
-          { label: 'White', value: '0' },
-          { label: 'Grey', value: '1' },
-          { label: 'Red', value: '2' },
-          { label: 'Blue', value: '3' },
-          { label: 'Custom', value: '4' }
-        ]
+          { label: 'White', value: '0', color: '#FFFFFF' },  // GColorWhite
+          { label: 'Grey', value: '1', color: '#AAAAAA' },   // GColorLightGray
+          { label: 'Red', value: '2', color: '#FF0000' },    // GColorRed
+          { label: 'Blue', value: '3', color: '#0055FF' }    // GColorBlueMoon
+        ],
+        customOption: { label: 'Custom', value: '4', colorFrom: 'AccentCustom' }
       },
       {
         type: 'color',
@@ -128,7 +133,13 @@ module.exports = [
     ]
   },
   {
-    type: 'submit',
-    defaultValue: 'Save'
+    // Custom component (clay-components.js): "Restore defaults" and "Save" side
+    // by side. defaultValue is the restore button's label; its click is handled
+    // in custom-clay.js. No messageKey, so nothing extra is sent to the watch.
+    type: 'savebar',
+    id: 'RestoreDefaults',
+    defaultValue: 'Restore defaults',
+    submitLabel: 'Save',
+    description: 'Restore defaults puts every setting back to its default. Press Save to apply, or close the page to keep your current settings.'
   }
 ];
