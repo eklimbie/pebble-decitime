@@ -102,6 +102,70 @@ var swatchGroup = {
   ].join('\n')
 };
 
+// A radio group of pictures, each with its label underneath. Like
+// swatchgroup it reuses Clay's radiogroup value handling.
+//   options: [{ label, value, image }]  image is a URL (here a data: URL from
+//            previews.js, filled in by index.js); without one, the label shows
+//            in an empty frame
+//   columns: 1, 2 or 3 pictures per row. With 1 they keep their own size, so
+//            a watch screenshot shows pixel for pixel.
+//   shape:   'round' shows the pictures as circles (round watch screens)
+var imageGroup = {
+  name: 'imagegroup',
+  manipulator: 'radiogroup',
+  defaults: {
+    label: '',
+    options: [],
+    columns: 3,
+    shape: 'rect',
+    serializeValueAs: 'string',
+    description: ''
+  },
+  template:
+    '<div class="component component-images">' +
+      '{{if label}}' +
+        '<span class="label">{{{label}}}</span>' +
+      '{{/if}}' +
+      '<div class="image-grid image-cols-{{columns}} image-{{shape}}">' +
+        '{{each options}}' +
+          '<label class="image-option">' +
+            '<input type="radio" value="{{this.value}}" name="clay-{{clayId}}" />' +
+            '{{if this.image}}' +
+              '<img class="image-pic" src="{{this.image}}" alt="" />' +
+            '{{else}}' +
+              '<span class="image-pic image-missing"></span>' +
+            '{{/if}}' +
+            '<span class="image-name">{{{this.label}}}</span>' +
+          '</label>' +
+        '{{/each}}' +
+      '</div>' +
+      '{{if description}}' +
+        '<div class="description">{{{description}}}</div>' +
+      '{{/if}}' +
+    '</div>',
+  style: [
+    '.component-images > .label { display: block; padding-bottom: 0.7rem; }',
+    '.component-images input { position: absolute; opacity: 0; pointer-events: none; }',
+    '.component-images .image-grid { display: grid; gap: 1rem 0.75rem; justify-content: center; padding-bottom: 0.7rem; }',
+    '.component-images .image-cols-1 { grid-template-columns: minmax(0, max-content); }',
+    '.component-images .image-cols-2 { grid-template-columns: repeat(2, minmax(0, 8rem)); gap: 1rem 1.5rem; }',
+    '.component-images .image-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }',
+    '.component-images .image-option {',
+    '  display: flex; flex-direction: column; align-items: center; padding: 0;',
+    '  -webkit-tap-highlight-color: transparent; cursor: pointer;',
+    '}',
+    '.component-images .image-pic { display: block; max-width: 100%; border-radius: 0.25rem; background: #000; }',
+    '.component-images .image-cols-2 .image-pic, .component-images .image-cols-3 .image-pic { width: 100%; }',
+    '.component-images .image-round .image-pic { border-radius: 50%; }',
+    '.component-images .image-missing { width: 100%; aspect-ratio: 1; }',
+    // Same selection ring as the colour squares.
+    '.component-images input:checked + .image-pic { box-shadow: 0 0 0 3px #484848, 0 0 0 6px #ff4700; }',
+    '.component-images .image-name { padding-top: 0.45rem; font-size: 0.9em; color: #a4a4a4; text-align: center; }',
+    '.component-images input:checked ~ .image-name { color: #ffffff; }',
+    '.component-images .description { padding-left: 0; padding-right: 0; }'
+  ].join('\n')
+};
+
 // "Restore defaults" and "Save" side by side, Save on the right. Use this in
 // place of a 'submit' item. defaultValue is the restore button's label (Clay
 // sets it through the 'button' manipulator), and on('click') on this item
@@ -132,4 +196,4 @@ var saveBar = {
   ].join('\n')
 };
 
-module.exports = [swatchGroup, saveBar];
+module.exports = [swatchGroup, imageGroup, saveBar];

@@ -11,15 +11,18 @@
  * time zone and jumps with DST exactly like the normal clock does.
  *
  * Styles:
- *   analog  - a ten-hour dial, 10 at the top. The hour hand turns once a day,
- *             the minute hand once per decimal hour, the second hand once
- *             per decimal minute.
+ *   analog  - a ten-hour dial, 10 at the top, round or (on rectangular
+ *             watches) square. The hour hand turns once a day, the minute
+ *             hand once per decimal hour, the second hand once per decimal
+ *             minute.
  *   digital - date, H:MM(:SS), a 10-cell "day bar" (one cell per decimal
  *             hour; a ring on round watches) and the ordinary time.
  *
  * Everything is configurable from the phone (gear icon in the Pebble app):
  * style, seconds / normal time / date (never, on wrist flick, always),
- * accent colour, and whether the digital display shows hour 0 as 0 or 10.
+ * accent colour, whether the digital display shows hour 0 as 0 or 10, the
+ * dial shape on rectangular watches, and on Pebble Time 2 and Round 2 the
+ * font family for all text.
  *
  * Platforms: aplite, basalt, chalk, diorite, emery (Time 2), flint (2 Duo),
  * gabbro (Round 2).
@@ -93,14 +96,33 @@
 
 #define FLICK_DURATION_S 43  // ~50 decimal seconds (43.2 s)
 
+#define FONT_DEFAULT 0  // LECO time and numerals, Gothic date and normal time
+#define FONT_GOTHIC  1
+#define FONT_ROBOTO  2
+
+#define DIAL_ROUND  0
+#define DIAL_SQUARE 1  // rectangular watches only
+
+// Pebble Time 2 and Round 2 have the screen space for a choice of fonts (and
+// the LECO 60 font). Other watches keep the default fonts.
+#if defined(PBL_PLATFORM_EMERY) || defined(PBL_PLATFORM_GABBRO)
+#define LARGE_SCREEN 1
+#define FONT_COUNT   3
+#else
+#define LARGE_SCREEN 0
+#define FONT_COUNT   1
+#endif
+
 // Settings are saved on the watch's flash under this key. If the layout of
 // the Settings struct ever changes, bump SETTINGS_VERSION: old saved data is
-// then ignored instead of being misread.
+// then ignored instead of being misread. New fields go at the end, so data
+// saved by an older version is a prefix of this struct (see settings_load).
 #define SETTINGS_KEY     1
-#define SETTINGS_VERSION 3
+#define SETTINGS_VERSION 4
+#define SETTINGS_V3_SIZE 8   // version 3 had the first eight fields below
 
-// Every field is one byte (uint8_t), so the struct is exactly 8 bytes with no
-// hidden padding, and can be saved and loaded as a single block of bytes.
+// Every field is one byte (uint8_t), so the struct is exactly 10 bytes with
+// no hidden padding, and can be saved and loaded as a single block of bytes.
 typedef struct {
   uint8_t version;
   uint8_t style;          // STYLE_*
@@ -110,6 +132,9 @@ typedef struct {
   uint8_t accent;         // ACCENT_*
   uint8_t accent_custom;  // GColor8 .argb (one byte per colour)
   uint8_t hour_zero_ten;  // digital only: show hour 0 as "10"
+  // Added in version 4:
+  uint8_t font;           // FONT_*
+  uint8_t dial;           // DIAL_*
 } Settings;
 
 static Settings s_settings;
@@ -124,19 +149,31 @@ static void settings_defaults(Settings *s) {
     .accent = ACCENT_GREY,
     .accent_custom = GColorVividCeruleanARGB8,
     .hour_zero_ten = 0,
+    .font = FONT_DEFAULT,
+    .dial = DIAL_ROUND,
   };
 }
 
 // Start from the defaults and only use what is stored if it is complete and
-// written by this version. persist_read_data() returns the number of bytes it
-// read, or a negative error code if nothing is stored, so one size check
-// covers "missing", "too short" and "wrong size".
+// written by a version we know. persist_read_data() returns the number of
+// bytes it read, or a negative error code if nothing is stored, so one size
+// check covers "missing", "too short" and "wrong size".
 static void settings_load(void) {
   settings_defaults(&s_settings);
   Settings stored;
-  if (persist_read_data(SETTINGS_KEY, &stored, sizeof(stored)) == (int)sizeof(stored) &&
-      stored.version == SETTINGS_VERSION) {
+  int n = persist_read_data(SETTINGS_KEY, &stored, sizeof(stored));
+  if (n == (int)sizeof(stored) && stored.version == SETTINGS_VERSION) {
     s_settings = stored;
+  } else if (n == SETTINGS_V3_SIZE && stored.version == 3) {
+    // Saved before the font and dial settings existed: keep the eight old ones.
+    memcpy(&s_settings, &stored, SETTINGS_V3_SIZE);
+    s_settings.version = SETTINGS_VERSION;
+  }
+  if (s_settings.font >= FONT_COUNT) {
+    s_settings.font = FONT_DEFAULT;  // would index past FAMILIES
+  }
+  if (s_settings.dial > DIAL_SQUARE) {
+    s_settings.dial = DIAL_ROUND;
   }
 }
 
@@ -244,59 +281,107 @@ static bool uses_flick(void) {
 // ---------------------------------------------------------------------------
 // Fonts
 // ---------------------------------------------------------------------------
+// Only the system fonts built into the watch are used, so the app ships no
+// font files. A font family sets all text: the decimal time, the date, the
+// normal time and the dial numerals. The default keeps the original look:
+// LECO for the time and numerals, and Gothic for the date and normal time,
+// because LECO has digits only.
 
-// Metrics measured from the system .pbf files: where the digits' ink starts
-// below the top of the text box, line height, widest digit, colon advance.
+// The LECO 60 font exists in Pebble Time 2 and Round 2 firmware only. A font
+// key is just the resource name as text, so an older SDK header that lacks it
+// can be filled in.
+#if LARGE_SCREEN && !defined(FONT_KEY_LECO_60_NUMBERS_AM_PM)
+#define FONT_KEY_LECO_60_NUMBERS_AM_PM "RESOURCE_ID_LECO_60_NUMBERS_AM_PM"
+#endif
+
+// Metrics measured from the system .pbf files (PebbleOS resources):
+//   ink_top  where the digits' ink starts below the top of the text box
+//   line_h   font height, which is also the height of the text box
+//   digit_w  advance of the widest digit
+//   colon_w  advance of ':'
+//   day_w    widest "%a %d" in English ("Wed 31"); 0 = no letters
 typedef struct {
   const char *key;
   int8_t ink_top;
   uint8_t line_h;
   uint8_t digit_w;
   uint8_t colon_w;
-} BigFont;
+  uint8_t day_w;
+} FontMetrics;
 
-// Largest first: pick_big_font() takes the first one that fits.
-static const BigFont BIG_FONTS[] = {
-#if defined(PBL_PLATFORM_EMERY) || defined(PBL_PLATFORM_GABBRO)
-  { FONT_KEY_LECO_60_NUMBERS_AM_PM, 18, 60, 37, 16 },
+static const FontMetrics F_GOTHIC_18      = { FONT_KEY_GOTHIC_18,              7, 18,  7,  3,  42 };
+static const FontMetrics F_GOTHIC_24_BOLD = { FONT_KEY_GOTHIC_24_BOLD,        10, 24, 10,  4,  54 };
+static const FontMetrics F_LECO_20_BOLD   = { FONT_KEY_LECO_20_BOLD_NUMBERS,   6, 20, 13,  6,   0 };
+static const FontMetrics F_LECO_28_LIGHT  = { FONT_KEY_LECO_28_LIGHT_NUMBERS,  8, 28, 18,  8,   0 };
+static const FontMetrics F_LECO_32_BOLD   = { FONT_KEY_LECO_32_BOLD_NUMBERS,  10, 32, 20,  9,   0 };
+static const FontMetrics F_LECO_36_BOLD   = { FONT_KEY_LECO_36_BOLD_NUMBERS,  11, 36, 23, 10,   0 };
+static const FontMetrics F_LECO_38_BOLD   = { FONT_KEY_LECO_38_BOLD_NUMBERS,  11, 38, 24, 11,   0 };
+static const FontMetrics F_LECO_42        = { FONT_KEY_LECO_42_NUMBERS,       13, 42, 26, 12,   0 };
+#if LARGE_SCREEN
+static const FontMetrics F_LECO_60        = { FONT_KEY_LECO_60_NUMBERS_AM_PM, 18, 60, 37, 16,   0 };
+static const FontMetrics F_GOTHIC_24      = { FONT_KEY_GOTHIC_24,             10, 24,  9,  4,  49 };
+static const FontMetrics F_GOTHIC_28_BOLD = { FONT_KEY_GOTHIC_28_BOLD,        10, 28, 11,  5,  69 };
+static const FontMetrics F_ROBOTO_21      = { FONT_KEY_ROBOTO_CONDENSED_21,    6, 21, 10,  5,  62 };
+static const FontMetrics F_ROBOTO_49      = { FONT_KEY_ROBOTO_BOLD_SUBSET_49, 14, 49, 28, 14,   0 };
 #endif
-  { FONT_KEY_LECO_42_NUMBERS,       13, 42, 26, 12 },
-  { FONT_KEY_LECO_38_BOLD_NUMBERS,  11, 38, 24, 11 },
-  { FONT_KEY_LECO_36_BOLD_NUMBERS,  11, 36, 23, 10 },
-  { FONT_KEY_LECO_32_BOLD_NUMBERS,  10, 32, 20,  9 },
-  { FONT_KEY_LECO_28_LIGHT_NUMBERS,  8, 28, 18,  8 },
-  { FONT_KEY_LECO_20_BOLD_NUMBERS,   6, 20, 13,  6 },
+
+// Sizes for the decimal time on the digital display, largest first, ending
+// in NULL: pick_time_font() takes the first that fits.
+static const FontMetrics *const TIME_LECO[] = {
+#if LARGE_SCREEN
+  &F_LECO_60,
+#endif
+  &F_LECO_42, &F_LECO_38_BOLD, &F_LECO_36_BOLD, &F_LECO_32_BOLD, &F_LECO_28_LIGHT, &F_LECO_20_BOLD, NULL,
 };
-// Number of entries: total size of the array / size of one entry.
-#define NUM_BIG_FONTS ((int)(sizeof(BIG_FONTS) / sizeof(BIG_FONTS[0])))
+#if LARGE_SCREEN
+static const FontMetrics *const TIME_GOTHIC[] = { &F_GOTHIC_28_BOLD, NULL };
+static const FontMetrics *const TIME_ROBOTO[] = { &F_ROBOTO_49, &F_ROBOTO_21, NULL };
+#endif
 
+// The fonts of one family. [0] is for small dials and screens (and for the
+// dial while a Timeline Quick View shrinks it), [1] for large ones.
 typedef struct {
-  const char *key;
-  int8_t ink_top;
-  uint8_t line_h;
-} SmallFont;
+  const FontMetrics *const *time;  // decimal time on the digital display
+  const FontMetrics *numerals[2];  // dial numerals
+  const FontMetrics *text[2];      // date and normal time
+} FontFamily;
 
-static const SmallFont SMALL_FONT    = { FONT_KEY_GOTHIC_18,      7, 18 };
-static const SmallFont SMALL_FONT_XL = { FONT_KEY_GOTHIC_24_BOLD, 10, 24 };
+// Indexed by FONT_*; the values must match the Font options in config.js.
+static const FontFamily FAMILIES[FONT_COUNT] = {
+  // FONT_DEFAULT
+  { TIME_LECO,   { &F_LECO_20_BOLD,   &F_LECO_28_LIGHT  }, { &F_GOTHIC_18, &F_GOTHIC_24_BOLD } },
+#if LARGE_SCREEN
+  // FONT_GOTHIC: bold time and numerals; regular date and normal time, so the time stands out.
+  { TIME_GOTHIC, { &F_GOTHIC_24_BOLD, &F_GOTHIC_28_BOLD }, { &F_GOTHIC_18, &F_GOTHIC_24 } },
+  // FONT_ROBOTO: Roboto Bold has digits only, so everything but the time is Roboto Condensed.
+  { TIME_ROBOTO, { &F_ROBOTO_21,      &F_ROBOTO_21      }, { &F_ROBOTO_21, &F_ROBOTO_21 } },
+#endif
+};
 
-// Dial numerals
-static const BigFont NUMERAL_FONT    = { FONT_KEY_LECO_20_BOLD_NUMBERS,  6, 20, 13, 6 };
-static const BigFont NUMERAL_FONT_XL = { FONT_KEY_LECO_28_LIGHT_NUMBERS, 8, 28, 18, 8 };
+static const FontFamily *font_family(void) {
+  return &FAMILIES[s_settings.font];  // settings_load/inbox_received keep it < FONT_COUNT
+}
+
+// Height of the digits' ink.
+static int font_ink(const FontMetrics *f) {
+  return f->line_h - f->ink_top;
+}
 
 // Width of "H:MM" / "H:MM:SS" with 1 or 2 hour digits.
-static int big_text_width(const BigFont *f, int hour_digits, bool with_seconds) {
+static int big_text_width(const FontMetrics *f, int hour_digits, bool with_seconds) {
   int digits = hour_digits + 2 + (with_seconds ? 2 : 0);
   int colons = with_seconds ? 2 : 1;
   return digits * f->digit_w + colons * f->colon_w;
 }
 
-static const BigFont *pick_big_font(int max_width, int hour_digits, bool with_seconds) {
-  for (int i = 0; i < NUM_BIG_FONTS; i++) {
-    if (big_text_width(&BIG_FONTS[i], hour_digits, with_seconds) <= max_width) {
-      return &BIG_FONTS[i];
-    }
+// The largest of the family's time sizes that fits; the smallest if none does.
+static const FontMetrics *pick_time_font(const FontFamily *fam, int max_width, int hour_digits,
+                                         bool with_seconds) {
+  const FontMetrics *const *size = fam->time;
+  while (size[1] && big_text_width(*size, hour_digits, with_seconds) > max_width) {
+    size++;
   }
-  return &BIG_FONTS[NUM_BIG_FONTS - 1];  // nothing fits: use the smallest
+  return *size;
 }
 
 // ---------------------------------------------------------------------------
@@ -319,14 +404,14 @@ static bool s_tap_subscribed;
 // we set colours on it, then draw shapes and text with it.
 
 // Draw text so that its ink (not its padded text box) starts at ink_y.
-static void draw_small(GContext *ctx, const char *text, const SmallFont *f, int x, int w, int ink_y) {
+static void draw_small(GContext *ctx, const char *text, const FontMetrics *f, int x, int w, int ink_y) {
   graphics_draw_text(ctx, text, fonts_get_system_font(f->key),
                      GRect(x, ink_y - f->ink_top, w, f->line_h + 4),
                      GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
 }
 
 // Fixed-width cells per character so digits don't jiggle as they change.
-static void draw_big(GContext *ctx, const char *text, const BigFont *f, int center_x, int ink_y) {
+static void draw_big(GContext *ctx, const char *text, const FontMetrics *f, int center_x, int ink_y) {
   // A C string is a run of chars ending in '\0'; `*c` is false at the end.
   int total = 0;
   for (const char *c = text; *c; c++) {
@@ -452,12 +537,83 @@ static void draw_hand(GContext *ctx, GPoint c, int32_t angle, int length, int ta
 // Constant text, so nothing needs formatting each frame.
 static const char DIAL_LABELS[10][3] = { "10", "1", "2", "3", "4", "5", "6", "7", "8", "9" };
 
+#if !defined(PBL_ROUND) || LARGE_SCREEN  // used by the square dial and the font families
+static int iabs(int v) {
+  return v < 0 ? -v : v;
+}
+#endif
+
+#if !defined(PBL_ROUND)
+// Square dial. Along the ray at `angle`, the edge of a square with half-side
+// `half` is half / max(|sin|, |cos|) away from the centre: `half` straight up,
+// half * 1.41 towards a corner. max(|sin|, |cos|) is never below 0.7, so the
+// division is safe.
+static int square_reach(int32_t angle, int half) {
+  const int32_t s = iabs(sin_lookup(angle));
+  const int32_t co = iabs(cos_lookup(angle));
+  return (int)(half * TRIG_MAX_RATIO / (s > co ? s : co));
+}
+
+// How far along the ray at `angle` a box of half_w x half_h can be centred
+// and still lie inside the square of half-side `half`: limited by the side
+// edges through sin, and by the top and bottom edges through cos.
+static int square_fit(int32_t angle, int half, int half_w, int half_h) {
+  const int32_t s = iabs(sin_lookup(angle));
+  const int32_t co = iabs(cos_lookup(angle));
+  int d = 2 * half;  // more than any real limit
+  if (s > 0 && (half - half_w) * TRIG_MAX_RATIO / s < d) {
+    d = (half - half_w) * TRIG_MAX_RATIO / s;
+  }
+  if (co > 0 && (half - half_h) * TRIG_MAX_RATIO / co < d) {
+    d = (half - half_h) * TRIG_MAX_RATIO / co;
+  }
+  return d;
+}
+#endif
+
+#if LARGE_SCREEN
+
+// Distance from the dial centre to the middle of the date (above) and of the
+// normal time (below): 2/5 of the radius, or nearer the centre where needed
+// to stay 4 px clear of every numeral (letters such as W and d reach above
+// the digits), but not over the centre cap of radius cap. 0 if no distance
+// works; the text is then left out.
+// num holds the numeral centres relative to the dial centre. The date box is
+// tested against all ten numerals. The normal time below is never wider than
+// the widest date, and on both dials the numerals below mirror those above
+// with labels no wider, so this covers it too.
+static int dial_text_offset(int r, const GPoint num[10], const FontMetrics *nf, const FontMetrics *tf,
+                            int cap) {
+  const int half_w = tf->day_w / 2 + 4;
+  const int half_h = font_ink(tf) / 2 + 4;
+  const int n_half_h = font_ink(nf) / 2;
+  for (int off = r * 2 / 5; off >= cap + half_h; off--) {
+    bool clear = true;
+    for (int h = 0; h < 10 && clear; h++) {
+      const int n_half_w = (int)strlen(DIAL_LABELS[h]) * nf->digit_w / 2;
+      if (iabs(num[h].x) < half_w + n_half_w && iabs(num[h].y + off) < half_h + n_half_h) {
+        clear = false;
+      }
+    }
+    if (clear) {
+      return off;
+    }
+  }
+  return 0;
+}
+#endif
+
 static void draw_analog(GContext *ctx, GRect b, DecimalTime d, const struct tm *lt, Frame f) {
   // Fit the dial into the visible area (it shrinks for a Timeline Quick View).
   const int size = b.size.w < b.size.h ? b.size.w : b.size.h;
   const int r = size / 2 - 2;
   const GPoint c = GPoint(b.origin.x + b.size.w / 2, b.origin.y + b.size.h / 2);
   const bool xl = r >= 95;  // Time 2 and Round 2 sized dials
+#if !defined(PBL_ROUND)
+  // A square of the same half-side r: ticks reach out to its edge, numerals
+  // move out towards its corners. The hands keep their round-dial lengths.
+  const bool square = s_settings.dial == DIAL_SQUARE;
+#endif
 
   // Ticks: 100 decimal minutes, longer every 5, an hour mark (accent) every 10.
   const int hour_len = r / 9;
@@ -475,17 +631,38 @@ static void draw_analog(GContext *ctx, GRect b, DecimalTime d, const struct tm *
     }
     graphics_context_set_stroke_color(ctx, color);
     graphics_context_set_stroke_width(ctx, width);
+#if !defined(PBL_ROUND)
+    if (square) {
+      // Pulled in by half the width, so a wide tick's rounded end stays inside.
+      const int outer = square_reach(a, r) - width / 2;
+      graphics_draw_line(ctx, polar(c, a, outer - len), polar(c, a, outer));
+      continue;
+    }
+#endif
     graphics_draw_line(ctx, polar(c, a, r - len), polar(c, a, r));
   }
 
-  // Numerals 10, 1 .. 9, centred on a circle just inside the hour marks.
-  const BigFont *nf = xl ? &NUMERAL_FONT_XL : &NUMERAL_FONT;
-  const int nf_ink = nf->line_h - nf->ink_top;
-  const int nr = r - hour_len - 5 - nf_ink / 2;
+  // Numerals 10, 1 .. 9 just inside the hour marks: on a circle, or on the
+  // square each as far out as its box fits (num[] is relative to c).
+  const FontFamily *fam = font_family();
+  const FontMetrics *nf = fam->numerals[xl];
+  const int nf_ink = font_ink(nf);
+  GPoint num[10];
+  for (int h = 0; h < 10; h++) {
+    const int32_t a = (int32_t)h * TRIG_MAX_ANGLE / 10;
+#if !defined(PBL_ROUND)
+    if (square) {
+      const int half_w = (int)strlen(DIAL_LABELS[h]) * nf->digit_w / 2;
+      num[h] = polar(GPoint(0, 0), a, square_fit(a, r - hour_len - 5, half_w, nf_ink / 2));
+      continue;
+    }
+#endif
+    num[h] = polar(GPoint(0, 0), a, r - hour_len - 5 - nf_ink / 2);
+  }
   GFont numeral_font = fonts_get_system_font(nf->key);
   graphics_context_set_text_color(ctx, COLOR_MAIN);
   for (int h = 0; h < 10; h++) {
-    GPoint p = polar(c, (int32_t)h * TRIG_MAX_ANGLE / 10, nr);
+    const GPoint p = GPoint(c.x + num[h].x, c.y + num[h].y);
     graphics_draw_text(ctx, DIAL_LABELS[h], numeral_font,
                        GRect(p.x - 30, p.y - nf_ink / 2 - nf->ink_top, 60, nf->line_h + 4),
                        GTextOverflowModeFill, GTextAlignmentCenter, NULL);
@@ -494,18 +671,26 @@ static void draw_analog(GContext *ctx, GRect b, DecimalTime d, const struct tm *
   // Date above the centre, normal time below, if there is room
   // (not on the smallest dials, e.g. 144 px wide during a Quick View).
   if (r >= 62) {
-    const SmallFont *small = xl ? &SMALL_FONT_XL : &SMALL_FONT;
-    const int small_ink = small->line_h - small->ink_top;
+    const FontMetrics *small = fam->text[xl];
+    const int small_ink = font_ink(small);
+#if LARGE_SCREEN
+    // The default layout is unchanged. Other families can be larger, so
+    // their text moves inward to clear the numerals, or is left out.
+    const int off = fam == &FAMILIES[FONT_DEFAULT] ? r * 2 / 5
+                                                   : dial_text_offset(r, num, nf, small, xl ? 7 : 5);
+#else
+    const int off = r * 2 / 5;
+#endif
     graphics_context_set_text_color(ctx, COLOR_SUB);
-    if (f.date) {
+    if (f.date && off > 0) {
       char date[24];
       strftime(date, sizeof(date), "%a %d", lt);
-      draw_small(ctx, date, small, c.x - r, 2 * r, c.y - r * 2 / 5 - small_ink / 2);
+      draw_small(ctx, date, small, c.x - r, 2 * r, c.y - off - small_ink / 2);
     }
-    if (f.normal_time) {
+    if (f.normal_time && off > 0) {
       char normal[8];
       draw_small(ctx, format_normal_time(normal, sizeof(normal), lt), small,
-                 c.x - r, 2 * r, c.y + r * 2 / 5 - small_ink / 2);
+                 c.x - r, 2 * r, c.y + off - small_ink / 2);
     }
   }
 
@@ -534,8 +719,9 @@ static void draw_analog(GContext *ctx, GRect b, DecimalTime d, const struct tm *
 // full: the whole screen. b: the part not covered by a Timeline Quick View.
 static void draw_digital(GContext *ctx, GRect full, GRect b, DecimalTime d, const struct tm *lt, Frame f) {
   const bool xl = full.size.w >= 200;
-  const SmallFont *small = xl ? &SMALL_FONT_XL : &SMALL_FONT;
-  const int small_ink = small->line_h - small->ink_top;
+  const FontFamily *fam = font_family();
+  const FontMetrics *small = fam->text[xl];
+  const int small_ink = font_ink(small);
   const bool ten = s_settings.hour_zero_ten;
   const int hour = (ten && d.h == 0) ? 10 : d.h;
 
@@ -543,16 +729,21 @@ static void draw_digital(GContext *ctx, GRect full, GRect b, DecimalTime d, cons
   const int ring = xl ? 10 : 7;
   draw_day_ring(ctx, full, d.ds, ring, f.accent);
   const int avail_w = full.size.w - 2 * (ring + 8) - 12;
+  const int time_w = avail_w;
   const int bar_h = 0;  // the ring replaces the bar
 #else
   const int margin = 4;
   const int avail_w = b.size.w - 2 * margin;
+  // On large screens the time's character cells may run to 2 px from the
+  // edge: the digits' own side spacing still leaves 4 px or more of black.
+  // Roboto's "10:08:88" on Pebble Time 2 needs this.
+  const int time_w = b.size.w - 2 * (xl ? 2 : margin);
   const int bar_h = xl ? 12 : 8;
 #endif
 
   // Size for two hour digits all day when "10" is on, so the font stays put.
-  const BigFont *big = pick_big_font(avail_w, ten ? 2 : 1, f.seconds);
-  const int big_ink = big->line_h - big->ink_top;
+  const FontMetrics *big = pick_time_font(fam, time_w, ten ? 2 : 1, f.seconds);
+  const int big_ink = font_ink(big);
   const int gap = xl ? 12 : 8;
 
   // Stack: date / decimal time / day bar / normal time, centred vertically.
@@ -755,6 +946,8 @@ static void inbox_received(DictionaryIterator *iter, void *context) {
   read_choice(iter, MESSAGE_KEY_NormalTime, &s_settings.normal_time, SHOW_ALWAYS);
   read_choice(iter, MESSAGE_KEY_Date, &s_settings.date, SHOW_ALWAYS);
   read_choice(iter, MESSAGE_KEY_Accent, &s_settings.accent, ACCENT_CUSTOM);
+  read_choice(iter, MESSAGE_KEY_Font, &s_settings.font, FONT_COUNT - 1);
+  read_choice(iter, MESSAGE_KEY_Dial, &s_settings.dial, DIAL_SQUARE);
 
   // The colour picker sends 0xRRGGBB. GColorFromHEX keeps only the bits the
   // 64-colour palette can show, so any number gives a valid, opaque colour.
@@ -803,8 +996,8 @@ static void init(void) {
   window_stack_push(s_window, true);
 
   // Register the handler before opening, so no message can arrive unhandled.
-  // Buffer sizes in bytes: a full settings message is under 100 bytes, and
-  // the watch never sends anything, so the outbox can stay tiny.
+  // Buffer sizes in bytes: a full settings message (9 integers) is about
+  // 100 bytes, and the watch never sends anything, so the outbox can stay tiny.
   app_message_register_inbox_received(inbox_received);
   app_message_open(256, 64);
 

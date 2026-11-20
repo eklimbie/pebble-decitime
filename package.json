@@ -5,7 +5,7 @@
     ],
     "name": "decimal-time",
     "author": "Ewout",
-    "version": "1.5.0",
+    "version": "1.6.0",
     "keywords": [
         "pebble-app"
     ],
@@ -37,7 +37,9 @@
             "NormalTime",
             "Date",
             "Accent",
-            "AccentCustom"
+            "AccentCustom",
+            "Font",
+            "Dial"
         ],
         "resources": {
             "media": []

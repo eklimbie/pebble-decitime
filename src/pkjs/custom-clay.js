@@ -1,5 +1,6 @@
 // Runs inside the generated settings page (Clay injects it with toString(),
 // so it must be self-contained and plain ES5).
+// - The "Watch face" picker sets the Style and Dial items, which are hidden.
 // - "First hour of the day" only applies to the digital style.
 // - The custom colour picker only applies when Accent is "Custom".
 // - "Restore defaults" puts every item back to its defaultValue from config.js
@@ -39,6 +40,54 @@ module.exports = function (minified) {
       accent.on('change', update);
     }
     update();
+
+    // Watch face: one picker for two settings. Picking a face sets Style and
+    // Dial; when those change some other way (the saved settings when the page
+    // opens, Restore defaults) the picker follows. `syncing` stops the two
+    // directions from setting each other in a loop.
+    var face = clayConfig.getItemById('Face');
+    var dial = clayConfig.getItemByMessageKey('Dial');              // absent on round watches
+    var syncing = false;
+
+    function faceFromSettings() {
+      if (String(style.get()) === '0') {
+        return 'digital';
+      }
+      return dial && String(dial.get()) === '1' ? 'analog-square' : 'analog-round';
+    }
+
+    function applyFace() {
+      if (syncing) {
+        return;
+      }
+      syncing = true;
+      var value = face.get();
+      if (dial && value !== 'digital') {
+        dial.set(value === 'analog-square' ? 1 : 0);  // digital keeps the last dial shape
+      }
+      style.set(value === 'digital' ? 0 : 1);
+      syncing = false;
+    }
+
+    function syncFace() {
+      if (syncing) {
+        return;
+      }
+      syncing = true;
+      face.set(faceFromSettings());
+      syncing = false;
+    }
+
+    if (face && style) {
+      setVisible(style, false);
+      setVisible(dial, false);
+      face.on('change', applyFace);
+      style.on('change', syncFace);
+      if (dial) {
+        dial.on('change', syncFace);
+      }
+      syncFace();
+    }
 
     // item.config is the item's entry from config.js, so config.defaultValue is
     // the default even when the page opened with saved settings. set() fires

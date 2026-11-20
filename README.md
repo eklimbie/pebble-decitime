@@ -2,7 +2,7 @@
 
 This is a watch face designed for Pebble watches. It uses [decimal time](https://en.wikipedia.org/wiki/Decimal_time) and has a digital and analog watch face.
 
-![image](watchface.png)
+![image](screenshots/emery/analog-round-default.png) ![image](screenshots/emery/analog-square-default.png) ![image](screenshots/emery/digital-default.pngpebbl)
 
 ## Building & running
 
@@ -10,6 +10,19 @@ This is a watch face designed for Pebble watches. It uses [decimal time](https:/
 pebble build                          # build for all targetPlatforms
 pebble install --emulator emery       # install on the emery emulator
 pebble install --phone <ip>           # install to a paired phone
+```
+
+## Screenshots
+
+`screenshots/<watch>/<face>-<font>.png` has every watch face (digital, analog
+round, analog square) on every watch, in every font the watch offers. They
+also supply the example pictures on the settings page (`src/pkjs/previews.js`).
+To make them again after changing the face:
+
+```sh
+pebble build
+python3 tools/screenshots.py          # all watches; or e.g. `emery gabbro`
+pebble build                          # include the new pictures in the app
 ```
 
 ## Target platforms
@@ -27,6 +40,8 @@ src/c/           C source for the watchapp
 src/pkjs/        PebbleKit JS (phone-side) source, if any
 worker_src/c/    Background worker source, if any
 resources/       Images, fonts, and other bundled resources
+screenshots/     Every face on every watch in every font (tools/screenshots.py)
+tools/           Helper scripts
 package.json     Project metadata (UUID, platforms, resources, message keys)
 wscript          Build rules — usually no need to edit
 ```
