@@ -4,7 +4,7 @@
         "native = C app (default if omitted); also package, rocky, moddable, plugin."
     ],
     "name": "decimal-time",
-    "author": "Ewout",
+    "author": "Quartz Calibrator",
     "version": "1.7.0",
     "keywords": [
         "pebble-app"
