@@ -9,7 +9,7 @@ the clock (pebble emu-set-time) and saves a screenshot as
 
 Then it writes src/pkjs/previews.js: the example pictures on the settings
 page (the faces in the default font, and a crop of the date and time for each
-font), so run `pebble build` again afterwards to include them.
+font), so run `pebble build` again afterward to include them.
 
 Run from the project root, after `pebble build`:
 
@@ -51,11 +51,11 @@ FONTS = {'default': 0, 'gothic': 1, 'roboto': 2}
 # The same for every screenshot: everything shown, red accent, hour 0 as "0".
 COMMON = {'Seconds': 2, 'NormalTime': 2, 'Date': 2, 'Accent': 2, 'HourZero': 0}
 
-# Wednesday 31 May 2023, 17:31 on the host's clock: decimal 7:29:86.
+# Wednesday, May 31, 2023, 17:31 on the host's clock: decimal 7:29:86.
 SHOT_TIME = int(datetime.datetime(2023, 5, 31, 17, 31, 0).timestamp())
 
-# Text colours on colour watches: COLOR_MAIN (time) and COLOR_SUB (date).
-TEXT_COLOURS = {(255, 255, 255), (170, 170, 170)}
+# Text colors on color watches: COLOR_MAIN (time) and COLOR_SUB (date).
+TEXT_COLORS = {(255, 255, 255), (170, 170, 170)}
 
 
 def faces_for(platform):
@@ -91,7 +91,7 @@ def capture(platform, pbw, keys):
             pebble('emu-set-time', *emu, str(SHOT_TIME))
             time.sleep(0.5)  # one redraw (the face redraws every decimal second)
             path = out / ('%s-%s.png' % (face, font))
-            # --no-correction: the palette colours the app draws, not sunlight-shaded ones.
+            # --no-correction: the palette colors the app draws, not sunlight-shaded ones.
             pebble('screenshot', *emu, '--no-open', '--no-correction', str(path))
             print('  ', path.relative_to(ROOT), flush=True)
     # Leave the watch face before stopping the emulator: its phone-side JS then
@@ -104,11 +104,11 @@ def capture(platform, pbw, keys):
 
 
 def png_data_uri(im):
-    """Smallest PNG we can easily make: a palette image (the watches have at most 64 colours)."""
+    """Smallest PNG we can easily make: a palette image (the watches have at most 64 colors)."""
     im = im.convert('RGB')
-    colours = len(im.getcolors(1 << 16) or [])
-    if 0 < colours <= 256:
-        im = im.convert('P', palette=Image.Palette.ADAPTIVE, colors=colours)
+    colors = len(im.getcolors(1 << 16) or [])
+    if 0 < colors <= 256:
+        im = im.convert('P', palette=Image.Palette.ADAPTIVE, colors=colors)
     buf = io.BytesIO()
     im.save(buf, 'PNG', optimize=True)
     return 'data:image/png;base64,' + base64.b64encode(buf.getvalue()).decode('ascii')
@@ -124,7 +124,7 @@ def text_box(path, round_screen):
     def is_text(x, y):
         if round_screen and (x - cx) ** 2 + (y - cy) ** 2 > inner ** 2:
             return False
-        return px[x, y] in TEXT_COLOURS
+        return px[x, y] in TEXT_COLORS
 
     rows = [y for y in range(h) if any(is_text(x, y) for x in range(w))]
     # Split the rows into bands of text separated by empty rows.

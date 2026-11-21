@@ -33,7 +33,7 @@ def build(ctx):
     binaries = []
 
     # Each platform has its own settings (compiler flags, headers); switch to
-    # them per platform and switch back afterwards for the bundle step.
+    # them per platform and switch back afterward for the bundle step.
     cached_env = ctx.env
     for platform in ctx.env.TARGET_PLATFORMS:
         ctx.env = ctx.all_envs[platform]

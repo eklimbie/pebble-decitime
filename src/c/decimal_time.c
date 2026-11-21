@@ -21,7 +21,7 @@
  *
  * Everything is configurable from the phone (gear icon in the Pebble app):
  * style, seconds / normal time / date (never, on wrist flick, always),
- * accent colour, whether the digital display shows hour 0 as 0 or 10, the
+ * accent color, whether the digital display shows hour 0 as 0 or 10, the
  * dial shape on rectangular watches, and on Pebble Time 2 and Round 2 the
  * font family for all text.
  *
@@ -57,7 +57,7 @@
  *   uint8_t, int32_t      integers with an exact size (8-bit unsigned,
  *                         32-bit signed). Memory on a watch is small, so the
  *                         size is chosen on purpose.
- *   123u                  the `u` makes the number unsigned, so the maths
+ *   123u                  the `u` makes the number unsigned, so the math
  *                         stays in unsigned 32-bit integers.
  *   typedef struct {...}  a named bundle of fields, like a record.
  *   T *p                  p is a pointer: the address of a T, not a copy.
@@ -71,7 +71,7 @@
  *                         security bug, the "buffer overflow").
  *
  * No floating point: the watch CPU has no hardware for it, so everything is
- * whole-number (integer) maths. Integer division rounds down: 7 / 2 == 3.
+ * whole-number (integer) math. Integer division rounds down: 7 / 2 == 3.
  */
 
 #include <pebble.h>
@@ -90,7 +90,7 @@
 #define SHOW_ALWAYS   2
 
 #define ACCENT_WHITE  0  // no longer offered by the settings page; still accepted
-#define ACCENT_GREY   1
+#define ACCENT_GRAY   1
 #define ACCENT_RED    2
 #define ACCENT_BLUE   3
 #define ACCENT_CUSTOM 4
@@ -103,6 +103,9 @@
 
 #define DIAL_ROUND  0
 #define DIAL_SQUARE 1  // rectangular watches only
+// The square dial where there is one; round watches only have the round dial.
+// Keep in step with the Dial and Face defaults in src/pkjs/config.js.
+#define DIAL_DEFAULT PBL_IF_ROUND_ELSE(DIAL_ROUND, DIAL_SQUARE)
 
 // Pebble Time 2 and Round 2 have the screen space for a choice of fonts (and
 // the LECO 60 font). Other watches keep the default fonts.
@@ -131,7 +134,7 @@ typedef struct {
   uint8_t normal_time;    // SHOW_*
   uint8_t date;           // SHOW_*
   uint8_t accent;         // ACCENT_*
-  uint8_t accent_custom;  // GColor8 .argb (one byte per colour)
+  uint8_t accent_custom;  // GColor8 .argb (one byte per color)
   uint8_t hour_zero_ten;  // digital only: show hour 0 as "10"
   // Added in version 4:
   uint8_t font;           // FONT_*
@@ -151,7 +154,7 @@ static void settings_defaults(Settings *s) {
     .accent_custom = GColorVividCeruleanARGB8,
     .hour_zero_ten = 0,
     .font = FONT_DEFAULT,
-    .dial = DIAL_ROUND,
+    .dial = DIAL_DEFAULT,
   };
 }
 
@@ -167,6 +170,8 @@ static void settings_load(void) {
     s_settings = stored;
   } else if (n == SETTINGS_V3_SIZE && stored.version == 3) {
     // Saved before the font and dial settings existed: keep the eight old ones.
+    // Font and dial keep their defaults, as on the settings page, which never
+    // saved them either.
     memcpy(&s_settings, &stored, SETTINGS_V3_SIZE);
     s_settings.version = SETTINGS_VERSION;
   }
@@ -174,7 +179,7 @@ static void settings_load(void) {
     s_settings.font = FONT_DEFAULT;  // would index past FAMILIES
   }
   if (s_settings.dial > DIAL_SQUARE) {
-    s_settings.dial = DIAL_ROUND;
+    s_settings.dial = DIAL_DEFAULT;
   }
 }
 
@@ -183,11 +188,11 @@ static void settings_save(void) {
 }
 
 // ---------------------------------------------------------------------------
-// Colours
+// Colors
 // ---------------------------------------------------------------------------
-// Presets picked from the 64-colour Pebble palette to sit close to the
-// Pebble Time 2 strap colours (white, grey, red, blue).
-// PBL_IF_COLOR_ELSE(a, b) is `a` on colour watches and `b` on black & white.
+// Presets picked from the 64-color Pebble palette to sit close to the
+// Pebble Time 2 strap colors (white, gray, red, blue).
+// PBL_IF_COLOR_ELSE(a, b) is `a` on color watches and `b` on black & white.
 
 #define COLOR_BG    GColorBlack
 #define COLOR_MAIN  GColorWhite
@@ -206,7 +211,7 @@ static GColor accent_color(void) {
       // Black would vanish on the black background.
       return gcolor_equal(c, GColorBlack) ? GColorWhite : c;
     }
-    case ACCENT_GREY:
+    case ACCENT_GRAY:
     default:           return GColorLightGray;
   }
 #else
@@ -215,17 +220,17 @@ static GColor accent_color(void) {
 }
 
 // ---------------------------------------------------------------------------
-// Time maths
+// Time math
 // ---------------------------------------------------------------------------
-// A day has 86 400 000 ms and 100 000 decimal seconds, so one decimal second
+// A day has 86,400,000 ms and 100,000 decimal seconds, so one decimal second
 // is exactly 864 ms. Working in whole milliseconds keeps every step exact.
 
 #define MS_PER_DAY        86400000u
-#define MS_PER_DEC_SECOND 864u     // 86 400 000 ms / 100 000
+#define MS_PER_DEC_SECOND 864u     // 86,400,000 ms / 100,000
 #define MS_PER_DEC_MINUTE 86400u   // 100 decimal seconds
 
 typedef struct {
-  uint32_t ds;  // decimal seconds since local midnight, 0 .. 99 999
+  uint32_t ds;  // decimal seconds since local midnight, 0 .. 99,999
   int h;        // 0 .. 9
   int m;        // 0 .. 99
   int s;        // 0 .. 99
@@ -250,7 +255,7 @@ static uint32_t local_ms_of_day(struct tm *out_tm) {
 }
 
 // Split "decimal seconds since midnight" into H:MM:SS with / (divide) and
-// % (remainder): 54 321 -> h 5, m 43, s 21.
+// % (remainder): 54,321 -> h 5, m 43, s 21.
 static DecimalTime to_decimal(uint32_t ms_of_day) {
   DecimalTime d;
   d.ds = ms_of_day / MS_PER_DEC_SECOND;
@@ -300,32 +305,32 @@ static bool uses_flick(void) {
 //   line_h   font height, which is also the height of the text box
 //   digit_w  advance of the widest digit
 //   colon_w  advance of ':'
-//   day_w    widest "%a %d" in English ("Wed 31"); 0 = no letters
+// The width of the date depends on the watch's language, so it is measured
+// on the watch instead (dial_text_width).
 typedef struct {
   const char *key;
   int8_t ink_top;
   uint8_t line_h;
   uint8_t digit_w;
   uint8_t colon_w;
-  uint8_t day_w;
 } FontMetrics;
 
-static const FontMetrics F_GOTHIC_18      = { FONT_KEY_GOTHIC_18,              7, 18,  7,  3,  42 };
-static const FontMetrics F_GOTHIC_24_BOLD = { FONT_KEY_GOTHIC_24_BOLD,        10, 24, 10,  4,  54 };
-static const FontMetrics F_LECO_20_BOLD   = { FONT_KEY_LECO_20_BOLD_NUMBERS,   6, 20, 13,  6,   0 };
-static const FontMetrics F_LECO_28_LIGHT  = { FONT_KEY_LECO_28_LIGHT_NUMBERS,  8, 28, 18,  8,   0 };
-static const FontMetrics F_LECO_32_BOLD   = { FONT_KEY_LECO_32_BOLD_NUMBERS,  10, 32, 20,  9,   0 };
-static const FontMetrics F_LECO_36_BOLD   = { FONT_KEY_LECO_36_BOLD_NUMBERS,  11, 36, 23, 10,   0 };
-static const FontMetrics F_LECO_38_BOLD   = { FONT_KEY_LECO_38_BOLD_NUMBERS,  11, 38, 24, 11,   0 };
-static const FontMetrics F_LECO_42        = { FONT_KEY_LECO_42_NUMBERS,       13, 42, 26, 12,   0 };
+static const FontMetrics F_GOTHIC_18      = { FONT_KEY_GOTHIC_18,              7, 18,  7,  3 };
+static const FontMetrics F_GOTHIC_24_BOLD = { FONT_KEY_GOTHIC_24_BOLD,        10, 24, 10,  4 };
+static const FontMetrics F_LECO_20_BOLD   = { FONT_KEY_LECO_20_BOLD_NUMBERS,   6, 20, 13,  6 };
+static const FontMetrics F_LECO_28_LIGHT  = { FONT_KEY_LECO_28_LIGHT_NUMBERS,  8, 28, 18,  8 };
+static const FontMetrics F_LECO_32_BOLD   = { FONT_KEY_LECO_32_BOLD_NUMBERS,  10, 32, 20,  9 };
+static const FontMetrics F_LECO_36_BOLD   = { FONT_KEY_LECO_36_BOLD_NUMBERS,  11, 36, 23, 10 };
+static const FontMetrics F_LECO_38_BOLD   = { FONT_KEY_LECO_38_BOLD_NUMBERS,  11, 38, 24, 11 };
+static const FontMetrics F_LECO_42        = { FONT_KEY_LECO_42_NUMBERS,       13, 42, 26, 12 };
 #if LARGE_SCREEN
-static const FontMetrics F_LECO_60        = { FONT_KEY_LECO_60_NUMBERS_AM_PM, 18, 60, 37, 16,   0 };
-static const FontMetrics F_GOTHIC_24      = { FONT_KEY_GOTHIC_24,             10, 24,  9,  4,  49 };
-static const FontMetrics F_GOTHIC_28_BOLD = { FONT_KEY_GOTHIC_28_BOLD,        10, 28, 11,  5,  69 };
-static const FontMetrics F_ROBOTO_21      = { FONT_KEY_ROBOTO_CONDENSED_21,    6, 21, 10,  5,  62 };
-static const FontMetrics F_ROBOTO_49      = { FONT_KEY_ROBOTO_BOLD_SUBSET_49, 14, 49, 28, 14,   0 };
+static const FontMetrics F_LECO_60        = { FONT_KEY_LECO_60_NUMBERS_AM_PM, 18, 60, 37, 16 };
+static const FontMetrics F_GOTHIC_24      = { FONT_KEY_GOTHIC_24,             10, 24,  9,  4 };
+static const FontMetrics F_GOTHIC_28_BOLD = { FONT_KEY_GOTHIC_28_BOLD,        10, 28, 11,  5 };
+static const FontMetrics F_ROBOTO_21      = { FONT_KEY_ROBOTO_CONDENSED_21,    6, 21, 10,  5 };
+static const FontMetrics F_ROBOTO_49      = { FONT_KEY_ROBOTO_BOLD_SUBSET_49, 14, 49, 28, 14 };
 // Measured in the emulator (text layout advances, ink from a screenshot).
-static const FontMetrics F_BITHAM_42_BOLD = { FONT_KEY_BITHAM_42_BOLD,        12, 42, 29, 10,   0 };
+static const FontMetrics F_BITHAM_42_BOLD = { FONT_KEY_BITHAM_42_BOLD,        12, 42, 29, 10 };
 #endif
 
 // Sizes for the decimal time on the digital display, largest first, ending
@@ -346,10 +351,10 @@ static const FontMetrics *const TIME_ROBOTO[] = { &F_ROBOTO_49, &F_ROBOTO_21, NU
 // Where each dial numeral goes. The dial places a numeral by its ink, not its
 // text box, and the SDK can't tell where a glyph's ink is, so it was measured
 // in the emulator by tools/numeral_metrics.py:
-//   ink_x, ink_y  the centre of the label's ink in its left-aligned text box,
+//   ink_x, ink_y  the center of the label's ink in its left-aligned text box,
 //                 in half pixels
 //   reach         from the inner end of the label's hour mark to that ink
-//                 centre, so the outline of every numeral keeps the same
+//                 center, so the outline of every numeral keeps the same
 //                 distance to its mark: 4 px on large dials, 3 px on small
 // Labels in DIAL_LABELS order: 10, 1, 2 .. 9. Each always sits at the same
 // angle, which is what makes one table right for every dial.
@@ -462,9 +467,9 @@ static bool s_tap_subscribed;
 // ---------------------------------------------------------------------------
 // Drawing helpers
 // ---------------------------------------------------------------------------
-// GRect(x, y, w, h) is a rectangle; GPoint(x, y) a point. y grows downwards.
+// GRect(x, y, w, h) is a rectangle; GPoint(x, y) a point. y grows downward.
 // GContext *ctx is the drawing context the system hands to the update proc:
-// we set colours on it, then draw shapes and text with it.
+// we set colors on it, then draw shapes and text with it.
 
 // Draw text so that its ink (not its padded text box) starts at ink_y.
 static void draw_small(GContext *ctx, const char *text, const FontMetrics *f, int x, int w, int ink_y) {
@@ -486,7 +491,7 @@ static void draw_big(GContext *ctx, const char *text, const FontMetrics *f, int 
   for (const char *c = text; *c; c++) {
     int cell = (*c == ':') ? f->colon_w : f->digit_w;
     glyph[0] = *c;
-    // Box a little wider than the cell so the glyph never wraps; centred on the cell.
+    // Box a little wider than the cell so the glyph never wraps; centered on the cell.
     graphics_draw_text(ctx, glyph, font, GRect(x - 4, ink_y - f->ink_top, cell + 8, f->line_h + 4),
                        GTextOverflowModeFill, GTextAlignmentCenter, NULL);
     x += cell;
@@ -499,13 +504,13 @@ static void draw_big(GContext *ctx, const char *text, const FontMetrics *f, int 
 
 #if !defined(PBL_ROUND)
 // Length of a frame of thickness t along the inside of rectangle o, measured
-// along its centre line.
+// along its center line.
 static int frame_length(GRect o, int t) {
   return 2 * (o.size.w + o.size.h) - 4 * t;
 }
 
 // Fill the part of that frame from `from` to `to` along its length,
-// clockwise from the top centre. The frame is five straight runs: top right,
+// clockwise from the top center. The frame is five straight runs: top right,
 // right, bottom, left, top left. The runs that end in a corner include its
 // square, so every pixel belongs to exactly one run.
 static void fill_frame_span(GContext *ctx, GRect o, int t, int from, int to) {
@@ -519,11 +524,11 @@ static void fill_frame_span(GContext *ctx, GRect o, int t, int from, int to) {
     if (z > a) {
       GRect r;
       switch (i) {
-        case 0:  r = GRect(cx + a, top, z - a, t); break;              // rightwards
+        case 0:  r = GRect(cx + a, top, z - a, t); break;              // rightward
         case 1:  r = GRect(right - t, top + t + a, t, z - a); break;   // down
-        case 2:  r = GRect(right - t - z, bottom - t, z - a, t); break; // leftwards
+        case 2:  r = GRect(right - t - z, bottom - t, z - a, t); break; // leftward
         case 3:  r = GRect(left, bottom - t - z, t, z - a); break;     // up
-        default: r = GRect(left + a, top, z - a, t); break;           // rightwards
+        default: r = GRect(left + a, top, z - a, t); break;           // rightward
       }
       graphics_fill_rect(ctx, r, 0, GCornerNone);
     }
@@ -538,7 +543,7 @@ static void draw_day_frame(GContext *ctx, GRect bounds, uint32_t ds, int t, GCol
   const int done = (int)(ds * (uint32_t)len / 100000u);  // at most ~10^8: fits 32 bits
   const int gap = t / 2;                                 // between sections
 #if defined(PBL_BW)
-  // Black & white has no grey: the rest of the day is a thin line along the
+  // Black & white has no gray: the rest of the day is a thin line along the
   // middle of the frame instead.
   const GRect mid = grect_inset(o, GEdgeInsets(t / 2));
   const int mid_len = frame_length(mid, 1);
@@ -565,10 +570,10 @@ static void draw_day_frame(GContext *ctx, GRect bounds, uint32_t ds, int t, GCol
 
 #else
 // Round screens: the same idea as a ring around the edge, midnight at the top.
-// Angles are fixed-point: TRIG_MAX_ANGLE (65 536) is one full turn.
+// Angles are fixed-point: TRIG_MAX_ANGLE (65,536) is one full turn.
 static void draw_day_ring(GContext *ctx, GRect bounds, uint32_t ds, uint16_t thickness, GColor accent) {
   GRect r = grect_inset(bounds, GEdgeInsets(2));
-  // ds / 100 000 of a turn. 65 536 / 100 000 reduces to 4096 / 6250, which
+  // ds / 100,000 of a turn. 65,536 / 100,000 reduces to 4096 / 6250, which
   // keeps ds * 4096 (at most ~410 million) inside 32 bits.
   int32_t end = (int32_t)(ds * 4096u / 6250u);
   GColor track = gcolor_equal(accent, COLOR_TRACK) ? GColorLightGray : COLOR_TRACK;
@@ -614,8 +619,8 @@ typedef struct {
 // ---------------------------------------------------------------------------
 //
 // Like the clocks of 1793: ten hours around the dial with 10 at the top.
-//   hour hand    one turn per day          (100 000 decimal seconds)
-//   minute hand  one turn per decimal hour (10 000 decimal seconds, 2 h 24 min)
+//   hour hand    one turn per day          (100,000 decimal seconds)
+//   minute hand  one turn per decimal hour (10,000 decimal seconds, 2 h 24 min)
 //   second hand  one turn per decimal minute (100 decimal seconds, 86.4 s)
 // The 100 ticks are decimal minutes; every tenth is an hour.
 
@@ -637,6 +642,9 @@ static void draw_hand(GContext *ctx, GPoint c, int32_t angle, int length, int ta
 // Constant text, so nothing needs formatting each frame.
 static const char DIAL_LABELS[10][3] = { "10", "1", "2", "3", "4", "5", "6", "7", "8", "9" };
 
+// The date on the dial, "Wed 31", in the watch's language (see init).
+#define DIAL_DATE_FORMAT "%a %d"
+
 // `inline`: no "unused function" warning on the watches that never call it.
 static inline int iabs(int v) {
   return v < 0 ? -v : v;
@@ -644,8 +652,8 @@ static inline int iabs(int v) {
 
 #if !defined(PBL_ROUND)
 // Square dial. Along the ray at `angle`, the edge of a square with half-side
-// `half` is half / max(|sin|, |cos|) away from the centre: `half` straight up,
-// half * 1.41 towards a corner. max(|sin|, |cos|) is never below 0.7, so the
+// `half` is half / max(|sin|, |cos|) away from the center: `half` straight up,
+// half * 1.41 toward a corner. max(|sin|, |cos|) is never below 0.7, so the
 // division is safe.
 static int square_reach(int32_t angle, int half) {
   const int32_t s = iabs(sin_lookup(angle));
@@ -660,9 +668,9 @@ static int div_round(int n, int d) {
   return n >= 0 ? (n + d / 2) / d : -((-n + d / 2) / d);
 }
 
-// Distance from the dial centre to the outer end of the mark at `angle`: the
+// Distance from the dial center to the outer end of the mark at `angle`: the
 // dial's edge. On the square dial (the same half-side r) that edge is
-// further out towards the corners, and a mark is pulled in by half its width
+// further out toward the corners, and a mark is pulled in by half its width
 // so a wide mark's rounded end stays inside the square.
 static int mark_outer(int32_t angle, int r, int width) {
 #if !defined(PBL_ROUND)
@@ -676,13 +684,13 @@ static int mark_outer(int32_t angle, int r, int width) {
 #if !defined(PBL_ROUND)
 // Square dial: the numerals form a square ring, like the chapter ring of a
 // Cartier Tank or Santos. The 10 and the 5 keep their place; every other
-// numeral goes where the line from the centre through its hour mark meets
+// numeral goes where the line from the center through its hour mark meets
 // the ring: 9 and 1 in the row of the 10, 4 and 6 in the row of the 5, and
-// 2, 3, 7 and 8 in columns as far from the centre as the 10.
-// x2, y2: ink centres on the screen, in half pixels.
+// 2, 3, 7 and 8 in columns as far from the center as the 10.
+// x2, y2: ink centers on the screen, in half pixels.
 static void square_ring(GPoint c, int x2[10], int y2[10]) {
-  const int up = 2 * c.y - y2[0];    // centre to the row of the 10
-  const int down = y2[5] - 2 * c.y;  // centre to the row of the 5
+  const int up = 2 * c.y - y2[0];    // center to the row of the 10
+  const int down = y2[5] - 2 * c.y;  // center to the row of the 5
   for (int h = 0; h < 10; h++) {
     const int32_t a = (int32_t)h * TRIG_MAX_ANGLE / 10;
     const int32_t s = sin_lookup(a), co = cos_lookup(a);
@@ -700,18 +708,80 @@ static void square_ring(GPoint c, int x2[10], int y2[10]) {
 
 #if LARGE_SCREEN
 
-// Distance from the dial centre to the middle of the date (above) and of the
-// normal time (below): 2/5 of the radius, or nearer the centre where needed
+static int text_width(const char *text, GFont font) {
+  return graphics_text_layout_get_content_size(text, font, GRect(0, 0, 400, 100),
+                                               GTextOverflowModeFill, GTextAlignmentLeft).w;
+}
+
+// The widest text that goes above or below the dial center in font f: the
+// date (DIAL_DATE_FORMAT, as "Wed 31") in the watch's language, or the
+// normal time. Day names differ in length between languages, so this is
+// measured: the widest day name with the widest day of the month, and the
+// normal time in the widest digit. That takes about 50 text layouts, so it is
+// done once per font; the language only changes when the face restarts. The
+// dial uses at most two text fonts at a time (normal size and the size for a
+// Timeline Quick View), so two are remembered.
+static int dial_text_width(const FontMetrics *f) {
+  static const FontMetrics *s_font[2];
+  static int s_width[2];
+  static int s_next;  // which entry to replace next
+  for (int i = 0; i < 2; i++) {
+    if (s_font[i] == f) {
+      return s_width[i];
+    }
+  }
+
+  GFont font = fonts_get_system_font(f->key);
+  char text[24];
+  struct tm t = { .tm_mday = 1 };
+  int widest = -1, wday = 0, mday = 1, digit = 0;
+  for (int i = 0; i < 7; i++) {
+    t.tm_wday = i;
+    strftime(text, sizeof(text), "%a", &t);
+    const int w = text_width(text, font);
+    if (w > widest) { widest = w; wday = i; }
+  }
+  widest = -1;
+  for (int i = 1; i <= 31; i++) {
+    t.tm_mday = i;
+    strftime(text, sizeof(text), "%d", &t);
+    const int w = text_width(text, font);
+    if (w > widest) { widest = w; mday = i; }
+  }
+  t.tm_wday = wday;
+  t.tm_mday = mday;
+  strftime(text, sizeof(text), DIAL_DATE_FORMAT, &t);
+  const int date_w = text_width(text, font);
+
+  widest = -1;
+  for (int i = 0; i < 10; i++) {
+    const char one[2] = { (char)('0' + i), '\0' };
+    const int w = text_width(one, font);
+    if (w > widest) { widest = w; digit = i; }
+  }
+  const char d = (char)('0' + digit);
+  const char normal[6] = { d, d, ':', d, d, '\0' };
+  const int normal_w = text_width(normal, font);
+
+  s_font[s_next] = f;
+  s_width[s_next] = date_w > normal_w ? date_w : normal_w;
+  const int width = s_width[s_next];
+  s_next = 1 - s_next;
+  return width;
+}
+
+// Distance from the dial center to the middle of the date (above) and of the
+// normal time (below): 2/5 of the radius, or nearer the center where needed
 // to stay 4 px clear of every numeral (letters such as W and d reach above
-// the digits), but not over the centre cap of radius cap. 0 if no distance
+// the digits), but not over the center cap of radius cap. 0 if no distance
 // works; the text is then left out.
-// x2, y2 hold the numerals' ink centres on the screen in half pixels, c the
-// dial centre. The date box is tested against all ten numerals. The normal
-// time below is never wider than the widest date, and on both dials the
-// numerals below mirror those above with labels no wider, so this covers it too.
+// x2, y2 hold the numerals' ink centers on the screen in half pixels, c the
+// dial center. The text box, as wide as the widest date or normal time, is
+// tested against all ten numerals. On both dials the numerals below mirror
+// those above with labels no wider, so this covers the normal time too.
 static int dial_text_offset(int r, GPoint c, const int x2[10], const int y2[10], const FontMetrics *nf,
                             const FontMetrics *tf, int cap) {
-  const int half_w = tf->day_w / 2 + 4;
+  const int half_w = dial_text_width(tf) / 2 + 4;
   const int half_h = font_ink(tf) / 2 + 4;
   const int n_half_h = font_ink(nf) / 2;
   for (int off = r * 2 / 5; off >= cap + half_h; off--) {
@@ -760,9 +830,9 @@ static void draw_analog(GContext *ctx, GRect b, DecimalTime d, const struct tm *
     graphics_draw_line(ctx, polar(c, a, outer - len), polar(c, a, outer));
   }
 
-  // Numerals 10, 1 .. 9, each centred on the line from the dial centre
+  // Numerals 10, 1 .. 9, each centered on the line from the dial center
   // through its hour mark, `reach` inside the mark's inner end exactly as it
-  // was drawn. x2, y2 are their ink centres in half pixels, so positions
+  // was drawn. x2, y2 are their ink centers in half pixels, so positions
   // round to the nearest half pixel.
   const FontFamily *fam = font_family();
   const DialNumerals *dn = fam->numerals[xl];
@@ -788,7 +858,7 @@ static void draw_analog(GContext *ctx, GRect b, DecimalTime d, const struct tm *
                        GTextOverflowModeFill, GTextAlignmentLeft, NULL);
   }
 
-  // Date above the centre, normal time below, if there is room
+  // Date above the center, normal time below, if there is room
   // (not on the smallest dials, e.g. 144 px wide during a Quick View).
   if (r >= 62) {
     const FontMetrics *small = fam->text[xl];
@@ -804,7 +874,7 @@ static void draw_analog(GContext *ctx, GRect b, DecimalTime d, const struct tm *
     graphics_context_set_text_color(ctx, COLOR_SUB);
     if (f.date && off > 0) {
       char date[24];
-      strftime(date, sizeof(date), "%a %d", lt);
+      strftime(date, sizeof(date), DIAL_DATE_FORMAT, lt);
       draw_small(ctx, date, small, c.x - r, 2 * r, c.y - off - small_ink / 2);
     }
     if (f.normal_time && off > 0) {
@@ -816,8 +886,8 @@ static void draw_analog(GContext *ctx, GRect b, DecimalTime d, const struct tm *
 
   // Hands. Same fixed-point trick as the day ring: reduce the fraction so the
   // multiplication cannot overflow 32 bits.
-  const int32_t hour_angle = (int32_t)(d.ds * 4096u / 6250u);              // ds / 100 000 of a turn
-  const int32_t minute_angle = (int32_t)((d.ds % 10000u) * 4096u / 625u);  // (ds % 10 000) / 10 000
+  const int32_t hour_angle = (int32_t)(d.ds * 4096u / 6250u);              // ds / 100,000 of a turn
+  const int32_t minute_angle = (int32_t)((d.ds % 10000u) * 4096u / 625u);  // (ds % 10,000) / 10,000
   draw_hand(ctx, c, hour_angle, r * 50 / 100, 0, xl ? 8 : 6, COLOR_MAIN);
   draw_hand(ctx, c, minute_angle, r - hour_len - 2, 0, xl ? 5 : 4, COLOR_MAIN);
   if (f.seconds) {
@@ -825,7 +895,7 @@ static void draw_analog(GContext *ctx, GRect b, DecimalTime d, const struct tm *
     draw_hand(ctx, c, second_angle, r - 3, r / 5, xl ? 2 : 1, f.accent);
   }
 
-  // Centre cap; its dot takes the accent colour while the second hand shows.
+  // Center cap; its dot takes the accent color while the second hand shows.
   graphics_context_set_fill_color(ctx, COLOR_MAIN);
   graphics_fill_circle(ctx, c, xl ? 7 : 5);
   graphics_context_set_fill_color(ctx, f.seconds ? f.accent : COLOR_BG);
@@ -867,7 +937,7 @@ static void draw_digital(GContext *ctx, GRect full, GRect b, DecimalTime d, cons
   const int big_ink = font_ink(big);
   const int gap = xl ? 12 : 8;
 
-  // Stack: date / decimal time / normal time, centred vertically.
+  // Stack: date / decimal time / normal time, centered vertically.
   // First add up the height of what will be shown, then draw top to bottom.
   bool show_date = f.date, show_normal = f.normal_time;
   int block = big_ink + (show_date ? small_ink + gap : 0) + (show_normal ? gap + small_ink : 0);
@@ -1023,7 +1093,7 @@ static void unobstructed_change(AnimationProgress progress, void *context) {
 // unexpected is ignored (the old setting stays).
 
 // Read an integer tuple. config.js sends every setting as an integer
-// (serializeValueAs: 'integer'; colours are numbers already), so strings and
+// (serializeValueAs: 'integer'; colors are numbers already), so strings and
 // byte arrays are rejected, and only the integer sizes the format defines
 // (1, 2 or 4 bytes) are read.
 static bool tuple_int(const Tuple *t, int32_t *out) {
@@ -1063,8 +1133,8 @@ static void inbox_received(DictionaryIterator *iter, void *context) {
   read_choice(iter, MESSAGE_KEY_Font, &s_settings.font, FONT_COUNT - 1);
   read_choice(iter, MESSAGE_KEY_Dial, &s_settings.dial, DIAL_SQUARE);
 
-  // The colour picker sends 0xRRGGBB. GColorFromHEX keeps only the bits the
-  // 64-colour palette can show, so any number gives a valid, opaque colour.
+  // The color picker sends 0xRRGGBB. GColorFromHEX keeps only the bits the
+  // 64-color palette can show, so any number gives a valid, opaque color.
   Tuple *t = dict_find(iter, MESSAGE_KEY_AccentCustom);
   int32_t hex;
   if (t && tuple_int(t, &hex)) {
@@ -1096,10 +1166,15 @@ static void window_unload(Window *window) {
 }
 
 static void init(void) {
+  // Day and month names (strftime's %a and %b) in the watch's language
+  // instead of always in English. Only LC_TIME: the face has no other text
+  // to translate.
+  setlocale(LC_TIME, "");
+
   settings_load();
 
   s_window = window_create();
-  // The window paints this colour behind its layers on every redraw.
+  // The window paints this color behind its layers on every redraw.
   window_set_background_color(s_window, COLOR_BG);
   window_set_window_handlers(s_window, (WindowHandlers) {
     .load = window_load,

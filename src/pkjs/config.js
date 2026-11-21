@@ -4,8 +4,8 @@
 //   Seconds,
 //   NormalTime,
 //   Date        0 never, 1 on wrist flick, 2 always
-//   Accent      1 grey, 2 red, 3 blue, 4 custom (0 white: no longer offered)
-//   AccentCustom colour picker, used when Accent is custom
+//   Accent      1 gray, 2 red, 3 blue, 4 custom (0 white: no longer offered)
+//   AccentCustom color picker, used when Accent is custom
 //   Font        0 LECO and Gothic, 1 Bitham and Gothic, 2 Roboto (Time 2 and Round 2)
 //   Dial        0 round, 1 square (rectangular watches, analog style)
 // The watch accepts integers only, so every radiogroup/swatchgroup/imagegroup/
@@ -45,14 +45,14 @@ module.exports = [
         defaultValue: 'Display'
       },
       {
-        // Rectangular watches: digital, round dial or square dial.
+        // Rectangular watches: square dial (the default), round dial or digital.
         type: 'imagegroup',
         id: 'Face',
         label: 'Watch face',
         capabilities: ['RECT'],
         columns: 3,
-        defaultValue: 'analog-round',
-        options: [FACE_DIGITAL, FACE_ROUND, FACE_SQUARE]
+        defaultValue: 'analog-square',
+        options: [FACE_SQUARE, FACE_ROUND, FACE_DIGITAL]
       },
       {
         // Round watches have no square dial. Only one of the two is built.
@@ -63,7 +63,7 @@ module.exports = [
         columns: 2,
         shape: 'round',
         defaultValue: 'analog-round',
-        options: [FACE_DIGITAL, FACE_ROUND]
+        options: [FACE_ROUND, FACE_DIGITAL]
       },
       {
         // Hidden on the page (custom-clay.js): set by the Watch face picker.
@@ -79,11 +79,13 @@ module.exports = [
       },
       {
         // Hidden on the page (custom-clay.js): set by the Watch face picker.
+        // Square by default, as DIAL_DEFAULT on the watch. Round watches have
+        // no Dial item and always use the round dial.
         type: 'radiogroup',
         messageKey: 'Dial',
         label: 'Dial shape',
         capabilities: ['RECT'],
-        defaultValue: '0',
+        defaultValue: '1',
         serializeValueAs: 'integer',
         options: [
           { label: 'Round', value: '0' },
@@ -176,15 +178,15 @@ module.exports = [
     items: [
       {
         type: 'heading',
-        defaultValue: 'Accent colour'
+        defaultValue: 'Accent color'
       },
       {
-        // Custom component (clay-components.js): a 2x2 grid of colour squares,
-        // the fourth being "Custom", which shows the AccentCustom colour. The
+        // Custom component (clay-components.js): a 2x2 grid of color squares,
+        // the fourth being "Custom", which shows the AccentCustom color. The
         // AccentCustom row below is moved up under the squares on the page.
         // Each color is what the watch draws for that choice, see
         // accent_color() in decimal_time.c. White (0) is no longer offered;
-        // custom-clay.js shows a saved White as a white Custom colour.
+        // custom-clay.js shows a saved White as a white Custom color.
         type: 'swatchgroup',
         messageKey: 'Accent',
         label: 'Accent',
@@ -194,14 +196,14 @@ module.exports = [
         options: [
           { label: 'Red', value: '2', color: '#FF0000' },    // GColorRed
           { label: 'Blue', value: '3', color: '#0055FF' },   // GColorBlueMoon
-          { label: 'Grey', value: '1', color: '#AAAAAA' }    // GColorLightGray
+          { label: 'Gray', value: '1', color: '#AAAAAA' }    // GColorLightGray
         ],
         customOption: { label: 'Custom', value: '4', colorFrom: 'AccentCustom' }
       },
       {
         type: 'color',
         messageKey: 'AccentCustom',
-        label: 'Custom colour',
+        label: 'Custom color',
         defaultValue: '00AAFF',
         sunlight: true
       }

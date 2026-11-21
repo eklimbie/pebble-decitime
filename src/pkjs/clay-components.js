@@ -2,14 +2,14 @@
 // Clay copies these into the page as text, so templates and styles are plain
 // strings. Templates use Clay's {{ }} syntax, the same as its built-in ones.
 
-// A radio group drawn as a grid of colour squares, two per row, with an
+// A radio group drawn as a grid of color squares, two per row, with an
 // optional "Custom" square after them. It reuses
 // Clay's radiogroup value handling, so messageKey, defaultValue and
 // serializeValueAs work as they do for type: 'radiogroup'.
 //   options:      [{ label, value, color }]  one square each, color is CSS
 //   customOption: { label, value, colorFrom }
 //     colorFrom is the messageKey of a 'color' item; the square shows that
-//     item's colour and follows it as it changes. That item's row is also
+//     item's color and follows it as it changes. That item's row is also
 //     moved in here, right under the squares and above the description.
 var swatchGroup = {
   name: 'swatchgroup',
@@ -45,7 +45,7 @@ var swatchGroup = {
       '{{/if}}' +
     '</div>',
   // Runs in the page (Clay copies it with toString()), so plain ES5 only.
-  // The colour item is built after this one, so wait for the whole page.
+  // The color item is built after this one, so wait for the whole page.
   initialize: function (minified, clay) {
     var self = this;
     var custom = self.config.customOption;
@@ -59,12 +59,12 @@ var swatchGroup = {
       if (!source || !chip) {
         return;
       }
-      // Put the colour row under the squares. Clay only draws separator lines
+      // Put the color row under the squares. Clay only draws separator lines
       // between rows directly in a section, so it gets none here. Its own
       // show/hide (custom-clay.js) and picker keep working after the move.
       root.insertBefore(source.$element[0], root.querySelector('.swatch-description'));
       function paint() {
-        // A colour item's value is 0xRRGGBB as a number.
+        // A color item's value is 0xRRGGBB as a number.
         chip.style.backgroundColor = '#' + ('00000' + (source.get() >>> 0).toString(16)).slice(-6);
       }
       source.on('change', paint);
@@ -82,7 +82,7 @@ var swatchGroup = {
     '  display: flex; flex-direction: column; align-items: center; padding: 0;',
     '  -webkit-tap-highlight-color: transparent; cursor: pointer;',
     '}',
-    // The ring is spaced from the square by a band of the section colour,
+    // The ring is spaced from the square by a band of the section color,
     // so it reads clearly even around the red square.
     '.component-swatches .swatch-chip {',
     '  display: block; width: 5rem; height: 5rem; border-radius: 0.25rem;',
@@ -91,7 +91,7 @@ var swatchGroup = {
     '.component-swatches input:checked + .swatch-chip { box-shadow: 0 0 0 3px #484848, 0 0 0 6px #ff4700; }',
     '.component-swatches .swatch-name { padding-top: 0.45rem; font-size: 0.9em; color: #a4a4a4; }',
     '.component-swatches input:checked ~ .swatch-name { color: #ffffff; }',
-    // The moved colour row: this block already has the section's side padding.
+    // The moved color row: this block already has the section's side padding.
     '.component-swatches .component-color > label { padding-left: 0; padding-right: 0; }',
     '.component-swatches .description { padding-left: 0; padding-right: 0; }'
   ].join('\n')
@@ -153,7 +153,7 @@ var imageGroup = {
     '.component-images .image-cols-2 .image-pic, .component-images .image-cols-3 .image-pic { width: 100%; }',
     '.component-images .image-round .image-pic { border-radius: 50%; }',
     '.component-images .image-missing { width: 100%; aspect-ratio: 1; }',
-    // Same selection ring as the colour squares.
+    // Same selection ring as the color squares.
     '.component-images input:checked + .image-pic { box-shadow: 0 0 0 3px #484848, 0 0 0 6px #ff4700; }',
     '.component-images .image-name { padding-top: 0.45rem; font-size: 0.9em; color: #a4a4a4; text-align: center; }',
     '.component-images input:checked ~ .image-name { color: #ffffff; }',

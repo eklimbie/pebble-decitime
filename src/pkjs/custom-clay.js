@@ -2,7 +2,7 @@
 // so it must be self-contained and plain ES5).
 // - The "Watch face" picker sets the Style and Dial items, which are hidden.
 // - "First hour of the day" only applies to the digital style.
-// - The custom colour picker only applies when Accent is "Custom".
+// - The custom color picker only applies when Accent is "Custom".
 // - "Restore defaults" puts every item back to its defaultValue from config.js
 //   (the page only; the watch changes when Save is pressed).
 // With serializeValueAs: 'integer', get() returns a number, so compare as strings.

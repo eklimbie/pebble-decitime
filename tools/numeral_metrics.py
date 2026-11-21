@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Measure the dial numerals and write their placement into decimal_time.c.
 
-The analog dial places each numeral by its ink, not by its text box: centred
-on the line from the dial centre through its hour mark, with the same space
+The analog dial places each numeral by its ink, not by its text box: centered
+on the line from the dial center through its hour mark, with the same space
 between the numeral's outline and the mark all round. The SDK can't tell
 where a glyph's ink is, so this script draws the numerals of every dial font
 in the emulator (with a small throwaway app), measures them from screenshots
@@ -125,8 +125,8 @@ def seg_seg_dist(a, b, c, d):
 
 
 def placement(ink, angle, width, length, space):
-    """Ink centre (in half pixels, relative to the text box) and reach: how far
-    inside the mark's inner end the ink centre goes so that `space` pixels
+    """Ink center (in half pixels, relative to the text box) and reach: how far
+    inside the mark's inner end the ink center goes so that `space` pixels
     separate the numeral's outline (the convex hull of its pixels, so that
     e.g. the open corner of a 7 counts as space) from the mark."""
     a = math.radians(angle)
@@ -137,7 +137,7 @@ def placement(ink, angle, width, length, space):
     outline = hull([(x + dx - cx, y + dy - cy) for x, y in ink for dx in (0, 1) for dy in (0, 1)])
     s = 0.0
     while True:
-        mark = ((s * ux, s * uy), ((s + length) * ux, (s + length) * uy))   # the mark's centre line
+        mark = ((s * ux, s * uy), ((s + length) * ux, (s + length) * uy))   # the mark's center line
         gap = min(seg_seg_dist(outline[k], outline[(k + 1) % len(outline)], *mark)
                   for k in range(len(outline))) - width / 2
         if gap >= space:
