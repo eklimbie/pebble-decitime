@@ -1,8 +1,25 @@
 # DeciTime
 
-This is a watch face designed for Pebble watches. It uses [decimal time](https://en.wikipedia.org/wiki/Decimal_time) and has a digital and analog watch face.
+This is a [decimal time](https://en.wikipedia.org/wiki/Decimal_time) watch face designed for Pebble watches.
 
 ![image](screenshots/emery/analog-round-default.png) ![image](screenshots/emery/analog-square-default.png) ![image](screenshots/emery/digital-default.png)
+
+Curious to see it on your watch? Get it from the [Pebble store](https://apps.repebble.com/decimal-time_5ac12856fb884322b0b0600e)!
+
+## App store description
+
+Decimal Time tells the time the way the French Revolution tried to: 10 hours
+a day, 100 minutes an hour, 100 seconds a minute. Midnight is 0:00, noon is
+5:00.
+
+Choose a ten-hour analog dial (round, or square on rectangular watches) or a
+digital display that shows the day's progress around the edge of the screen.
+Show the seconds, the normal time and the date always, never, or only when you
+flick your wrist. On colour watches, pick an accent colour; on Pebble Time 2
+and Round 2, pick a font as well.
+
+Works on every Pebble, from the original to Pebble Time 2, Round 2 and
+Pebble 2 Duo.
 
 ## Building & running
 
