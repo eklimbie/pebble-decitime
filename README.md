@@ -2,7 +2,7 @@
 
 This is a watch face designed for Pebble watches. It uses [decimal time](https://en.wikipedia.org/wiki/Decimal_time) and has a digital and analog watch face.
 
-![image](screenshots/emery/analog-round-default.png) ![image](screenshots/emery/analog-square-default.png) ![image](screenshots/emery/digital-default.pngpebbl)
+![image](screenshots/emery/analog-round-default.png) ![image](screenshots/emery/analog-square-default.png) ![image](screenshots/emery/digital-default.png)
 
 ## Building & running
 
