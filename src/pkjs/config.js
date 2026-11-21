@@ -4,9 +4,9 @@
 //   Seconds,
 //   NormalTime,
 //   Date        0 never, 1 on wrist flick, 2 always
-//   Accent      0 white, 1 grey, 2 red, 3 blue, 4 custom
+//   Accent      1 grey, 2 red, 3 blue, 4 custom (0 white: no longer offered)
 //   AccentCustom colour picker, used when Accent is custom
-//   Font        0 default, 1 Gothic, 2 Roboto (Time 2 and Round 2)
+//   Font        0 LECO and Gothic, 1 Bitham and Gothic, 2 Roboto (Time 2 and Round 2)
 //   Dial        0 round, 1 square (rectangular watches, analog style)
 // The watch accepts integers only, so every radiogroup/swatchgroup/imagegroup/
 // select with a messageKey must keep serializeValueAs: 'integer' (Clay would
@@ -120,15 +120,13 @@ module.exports = [
         // No label: the section heading already says "Font".
         type: 'imagegroup',
         messageKey: 'Font',
-        description: 'Used for all text: time, date, normal time and dial numerals. ' +
-          'The default is the original look: LECO for the time and numerals, Gothic for the date. ' +
-          'Gothic has no large size, so its digital time is in Bitham.',
+        description: 'Used for all text: time, date, normal time and dial numerals.',
         columns: 1,
         defaultValue: '0',
         serializeValueAs: 'integer',
         options: [
-          { label: 'Default (LECO and Gothic)', value: '0', preview: 'font-0' },
-          { label: 'Gothic', value: '1', preview: 'font-1' },
+          { label: 'LECO and Gothic', value: '0', preview: 'font-0' },
+          { label: 'Bitham and Gothic', value: '1', preview: 'font-1' },
           { label: 'Roboto', value: '2', preview: 'font-2' }
         ]
       }
@@ -181,22 +179,22 @@ module.exports = [
         defaultValue: 'Accent colour'
       },
       {
-        // Custom component (clay-components.js): a 2x2 grid of colour squares
-        // with a "Custom" square centred below, showing the AccentCustom colour.
-        // The AccentCustom row below is moved up under the squares on the page.
+        // Custom component (clay-components.js): a 2x2 grid of colour squares,
+        // the fourth being "Custom", which shows the AccentCustom colour. The
+        // AccentCustom row below is moved up under the squares on the page.
         // Each color is what the watch draws for that choice, see
-        // accent_color() in decimal_time.c.
+        // accent_color() in decimal_time.c. White (0) is no longer offered;
+        // custom-clay.js shows a saved White as a white Custom colour.
         type: 'swatchgroup',
         messageKey: 'Accent',
         label: 'Accent',
         description: 'Hour marks and second hand on the dial; the day\'s progress around the edge of the digital display.',
-        defaultValue: '1',
+        defaultValue: '2',
         serializeValueAs: 'integer',
         options: [
-          { label: 'White', value: '0', color: '#FFFFFF' },  // GColorWhite
-          { label: 'Grey', value: '1', color: '#AAAAAA' },   // GColorLightGray
           { label: 'Red', value: '2', color: '#FF0000' },    // GColorRed
-          { label: 'Blue', value: '3', color: '#0055FF' }    // GColorBlueMoon
+          { label: 'Blue', value: '3', color: '#0055FF' },   // GColorBlueMoon
+          { label: 'Grey', value: '1', color: '#AAAAAA' }    // GColorLightGray
         ],
         customOption: { label: 'Custom', value: '4', colorFrom: 'AccentCustom' }
       },

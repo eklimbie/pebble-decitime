@@ -33,6 +33,14 @@ module.exports = function (minified) {
       setVisible(accentCustom, !!accent && String(accent.get()) === '4');
     }
 
+    // White is no longer offered. A saved White matches no square, and the
+    // radio group then reads as 0, which is White: show it as Custom white,
+    // which looks the same on the watch.
+    if (accent && accentCustom && String(accent.get()) === '0') {
+      accentCustom.set(0xFFFFFF);
+      accent.set(4);
+    }
+
     if (style) {
       style.on('change', update);
     }

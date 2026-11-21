@@ -3,7 +3,7 @@
 // strings. Templates use Clay's {{ }} syntax, the same as its built-in ones.
 
 // A radio group drawn as a grid of colour squares, two per row, with an
-// optional "Custom" square centred on a row of its own below them. It reuses
+// optional "Custom" square after them. It reuses
 // Clay's radiogroup value handling, so messageKey, defaultValue and
 // serializeValueAs work as they do for type: 'radiogroup'.
 //   options:      [{ label, value, color }]  one square each, color is CSS
@@ -91,8 +91,6 @@ var swatchGroup = {
     '.component-swatches input:checked + .swatch-chip { box-shadow: 0 0 0 3px #484848, 0 0 0 6px #ff4700; }',
     '.component-swatches .swatch-name { padding-top: 0.45rem; font-size: 0.9em; color: #a4a4a4; }',
     '.component-swatches input:checked ~ .swatch-name { color: #ffffff; }',
-    // "Custom" spans both columns of its row and sits in the middle.
-    '.component-swatches .swatch-custom { grid-column: 1 / -1; justify-self: center; }',
     // The moved colour row: this block already has the section's side padding.
     '.component-swatches .component-color > label { padding-left: 0; padding-right: 0; }',
     '.component-swatches .description { padding-left: 0; padding-right: 0; }'

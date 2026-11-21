@@ -25,6 +25,19 @@ python3 tools/screenshots.py          # all watches; or e.g. `emery gabbro`
 pebble build                          # include the new pictures in the app
 ```
 
+## Dial numerals
+
+The analog dial places each numeral by its ink rather than its text box:
+centred on the line from the centre through its hour mark, the same distance
+inside every mark on the round dial, and in a square ring of rows and columns
+on the square dial. The ink positions come from the emulator; after changing a
+dial font, the hour marks or that spacing, measure them again:
+
+```sh
+python3 tools/numeral_metrics.py      # rewrites the tables in src/c/decimal_time.c
+pebble build
+```
+
 ## Emulator troubleshooting
 
 - **`pebble emu-app-config` fails with `TimeoutError`**: the watch face was
