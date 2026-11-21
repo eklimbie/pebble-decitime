@@ -1,4 +1,3 @@
-
 // Phone side: Clay builds the settings page (gear icon in the Pebble app)
 // from config.js and sends the chosen values to the watch.
 var Clay = require('@rebble/clay');
@@ -15,37 +14,28 @@ clayComponents.forEach(function (component) {
   clay.registerComponent(component);
 });
 
-function copyOf(obj) {
-  var copy = {};
-  Object.keys(obj).forEach(function (key) {
-    copy[key] = obj[key];
-  });
-  return copy;
+// A copy of config.js in which every option that names a `preview` has that
+// picture for this watch platform (from previews.js). Only the connected
+// watch's pictures go into the page, which keeps it small. config.js is plain
+// data, so a JSON round trip makes a full copy.
+function configFor(platform) {
+  var pictures = previews[platform] || {};
+  var config = JSON.parse(JSON.stringify(clayConfig));
+  (function addPictures(items) {
+    items.forEach(function (item) {
+      if (item.items) {
+        addPictures(item.items);
+      }
+      (item.options || []).forEach(function (option) {
+        if (option.preview) {
+          option.image = pictures[option.preview] || '';
+        }
+      });
+    });
+  })(config);
+  return config;
 }
 
-// config.js with a picture added to every option that names a `preview`,
-// taken from `pictures` (one watch platform's entry in previews.js). Only the
-// connected watch's pictures go into the page, which keeps it small.
-function withPreviews(items, pictures) {
-  return items.map(function (item) {
-    var copy = copyOf(item);
-    if (item.items) {
-      copy.items = withPreviews(item.items, pictures);
-    }
-    if (item.options) {
-      copy.options = item.options.map(function (option) {
-        if (!option.preview) {
-          return option;
-        }
-        var withImage = copyOf(option);
-        withImage.image = pictures[option.preview] || '';
-        return withImage;
-      });
-    }
-    return copy;
-  });
-}
- 
 // In the emulator (Pebble.platform === 'pypkjs') Clay sends its page through
 // Pebble's old helper page on Amazon S3, which has been offline for years, so
 // the browser shows an error instead of the settings. Give the emulator the
@@ -59,7 +49,7 @@ var READ_RETURN_TO =
   ' var m = /[?&]return_to=([^&]*)/.exec(location.search);' +
   " return m ? decodeURIComponent(m[1]) : 'pebblejs://close#';" +
   ' })()';
- 
+
 function emulatorUrl(url) {
   if (url.indexOf(CLAY_EMULATOR_HELPER) !== 0) {
     return url;
@@ -69,17 +59,17 @@ function emulatorUrl(url) {
   html = html.replace(RETURN_TO_PLACEHOLDER, function () { return READ_RETURN_TO; });
   return 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
 }
- 
+
 Pebble.addEventListener('showConfiguration', function () {
   try {
     // What Clay's automatic mode does just before opening the page: the page
     // needs the watch's platform to decide which options to show.
-    clay.meta.activeWatchInfo = Pebble.getActiveWatchInfo && Pebble.getActiveWatchInfo();
-    var watch = clay.meta.activeWatchInfo;
-    clay.config = withPreviews(clayConfig, previews[watch && watch.platform] || {});
+    var watch = Pebble.getActiveWatchInfo && Pebble.getActiveWatchInfo();
+    clay.meta.activeWatchInfo = watch;
     clay.meta.accountToken = Pebble.getAccountToken();
     clay.meta.watchToken = Pebble.getWatchToken();
- 
+    clay.config = configFor(watch && watch.platform);
+
     var url = clay.generateUrl();
     Pebble.openURL(Pebble.platform === 'pypkjs' ? emulatorUrl(url) : url);
   } catch (e) {
@@ -87,7 +77,7 @@ Pebble.addEventListener('showConfiguration', function () {
     console.log('Decimal Time: could not open the settings page: ' + e + (e && e.stack ? '\n' + e.stack : ''));
   }
 });
- 
+
 Pebble.addEventListener('webviewclosed', function (e) {
   if (!e || !e.response) {
     return;  // closed without saving
@@ -102,4 +92,3 @@ Pebble.addEventListener('webviewclosed', function (e) {
     console.log('Decimal Time: could not read the settings page result: ' + err);
   }
 });
- 

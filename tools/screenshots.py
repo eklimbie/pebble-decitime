@@ -94,6 +94,12 @@ def capture(platform, pbw, keys):
             # --no-correction: the palette colours the app draws, not sunlight-shaded ones.
             pebble('screenshot', *emu, '--no-open', '--no-correction', str(path))
             print('  ', path.relative_to(ROOT), flush=True)
+    # Leave the watch face before stopping the emulator: its phone-side JS then
+    # shuts down and the emulator saves localStorage (the settings page's
+    # values) properly. Stopped while that JS runs, it can leave them
+    # half-written, and the settings page then opens with the defaults.
+    pebble('emu-button', *emu, 'click', 'select')
+    time.sleep(1)
     pebble('kill')
 
 
@@ -146,7 +152,8 @@ def write_previews(platforms):
             if shot.exists():
                 p[face] = png_data_uri(Image.open(shot))
         if platform in LARGE:
-            shots = {v: d / ('digital-%s.png' % f) for f, v in FONTS.items() if (d / ('digital-%s.png' % f)).exists()}
+            shots = {v: d / ('digital-%s.png' % f) for f, v in FONTS.items()}
+            shots = {v: shot for v, shot in shots.items() if shot.exists()}
             if shots:
                 # One tile size that fits every font's text, so the choices are
                 # the same size on the page and show how big each font really
@@ -175,15 +182,21 @@ def main():
     package = json.loads((ROOT / 'package.json').read_text())
     all_platforms = package['pebble']['targetPlatforms']
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
+    unknown = sorted(set(args) - set(all_platforms))
+    if unknown:
+        sys.exit('Unknown platform: %s (choose from %s)' % (', '.join(unknown), ', '.join(all_platforms)))
     platforms = args or all_platforms
 
     if '--previews-only' not in sys.argv:
+        built = sorted((ROOT / 'build').glob('*.pbw'))
+        if not built:
+            sys.exit('No app in build/: run `pebble build` first.')
         appinfo = json.loads((ROOT / 'build' / 'appinfo.json').read_text())
         keys = appinfo['appKeys']
         # Install a copy, so a `pebble build` while this runs can't swap the app mid-way.
         with tempfile.TemporaryDirectory() as tmp:
             pbw = Path(tmp) / 'app.pbw'
-            shutil.copy(next((ROOT / 'build').glob('*.pbw')), pbw)
+            shutil.copy(built[0], pbw)
             for platform in platforms:
                 capture(platform, pbw, keys)
 

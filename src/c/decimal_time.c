@@ -15,8 +15,9 @@
  *             watches) square. The hour hand turns once a day, the minute
  *             hand once per decimal hour, the second hand once per decimal
  *             minute.
- *   digital - date, H:MM(:SS), a 10-cell "day bar" (one cell per decimal
- *             hour; a ring on round watches) and the ordinary time.
+ *   digital - date, H:MM(:SS) and the ordinary time, with the day's progress
+ *             around the edge of the screen in ten sections, one per decimal
+ *             hour: a frame on rectangular watches, a ring on round ones.
  *
  * Everything is configurable from the phone (gear icon in the Pebble app):
  * style, seconds / normal time / date (never, on wrist flick, always),
@@ -85,7 +86,7 @@
 #define STYLE_ANALOG  1
 
 #define SHOW_NEVER    0
-#define SHOW_ON_FLICK 1  // visible for 100 decimal seconds after a wrist flick
+#define SHOW_ON_FLICK 1  // visible for 50 decimal seconds after a wrist flick
 #define SHOW_ALWAYS   2
 
 #define ACCENT_WHITE  0
@@ -323,6 +324,8 @@ static const FontMetrics F_GOTHIC_24      = { FONT_KEY_GOTHIC_24,             10
 static const FontMetrics F_GOTHIC_28_BOLD = { FONT_KEY_GOTHIC_28_BOLD,        10, 28, 11,  5,  69 };
 static const FontMetrics F_ROBOTO_21      = { FONT_KEY_ROBOTO_CONDENSED_21,    6, 21, 10,  5,  62 };
 static const FontMetrics F_ROBOTO_49      = { FONT_KEY_ROBOTO_BOLD_SUBSET_49, 14, 49, 28, 14,   0 };
+// Measured in the emulator (text layout advances, ink from a screenshot).
+static const FontMetrics F_BITHAM_42_BOLD = { FONT_KEY_BITHAM_42_BOLD,        12, 42, 29, 10,   0 };
 #endif
 
 // Sizes for the decimal time on the digital display, largest first, ending
@@ -334,7 +337,9 @@ static const FontMetrics *const TIME_LECO[] = {
   &F_LECO_42, &F_LECO_38_BOLD, &F_LECO_36_BOLD, &F_LECO_32_BOLD, &F_LECO_28_LIGHT, &F_LECO_20_BOLD, NULL,
 };
 #if LARGE_SCREEN
-static const FontMetrics *const TIME_GOTHIC[] = { &F_GOTHIC_28_BOLD, NULL };
+// Gothic stops at 28 px, so the Gothic family's time uses Bitham 42 Bold,
+// the largest sans-serif system font (digits only), where it fits.
+static const FontMetrics *const TIME_GOTHIC[] = { &F_BITHAM_42_BOLD, &F_GOTHIC_28_BOLD, NULL };
 static const FontMetrics *const TIME_ROBOTO[] = { &F_ROBOTO_49, &F_ROBOTO_21, NULL };
 #endif
 
@@ -430,35 +435,72 @@ static void draw_big(GContext *ctx, const char *text, const FontMetrics *f, int 
   }
 }
 
-#if !defined(PBL_ROUND)
-// Rectangular screens: ten cells, one per decimal hour; the current one fills up.
-static void draw_day_bar(GContext *ctx, GRect bar, uint32_t ds, GColor accent) {
-  const int gap = 2;
-  int cell_w = (bar.size.w - 9 * gap) / 10;
-  int total_w = cell_w * 10 + gap * 9;
-  int x0 = bar.origin.x + (bar.size.w - total_w) / 2;
-  int full = (int)(ds / 10000u);                                    // finished hours
-  int partial = (int)((ds % 10000u) * (uint32_t)cell_w / 10000u);   // pixels of the current one
-  // Black & white has no grey track, and an accent as dark as the track
-  // would disappear: draw cell outlines instead.
-  const bool outline = PBL_IF_BW_ELSE(true, gcolor_equal(accent, COLOR_TRACK));
-  if (outline) {
-    graphics_context_set_stroke_color(ctx, PBL_IF_COLOR_ELSE(GColorLightGray, COLOR_MAIN));
-    graphics_context_set_stroke_width(ctx, 1);
-  }
+// The digital display shows the day's progress around the edge of the
+// screen, in ten sections, one per decimal hour, clockwise from midnight at
+// the top: a frame on rectangular screens, a ring on round ones.
 
-  for (int i = 0; i < 10; i++) {
-    GRect cell = GRect(x0 + i * (cell_w + gap), bar.origin.y, cell_w, bar.size.h);
-    if (outline) {
-      graphics_draw_rect(ctx, cell);
-    } else {
-      graphics_context_set_fill_color(ctx, COLOR_TRACK);
-      graphics_fill_rect(ctx, cell, 0, GCornerNone);
+#if !defined(PBL_ROUND)
+// Length of a frame of thickness t along the inside of rectangle o, measured
+// along its centre line.
+static int frame_length(GRect o, int t) {
+  return 2 * (o.size.w + o.size.h) - 4 * t;
+}
+
+// Fill the part of that frame from `from` to `to` along its length,
+// clockwise from the top centre. The frame is five straight runs: top right,
+// right, bottom, left, top left. The runs that end in a corner include its
+// square, so every pixel belongs to exactly one run.
+static void fill_frame_span(GContext *ctx, GRect o, int t, int from, int to) {
+  const int left = o.origin.x, top = o.origin.y;
+  const int right = left + o.size.w, bottom = top + o.size.h, cx = left + o.size.w / 2;
+  const int len[5] = { right - cx, o.size.h - t, o.size.w - t, o.size.h - 2 * t, cx - left };
+  int start = 0;  // where the current run starts along the frame
+  for (int i = 0; i < 5; i++) {
+    const int a = from > start ? from - start : 0;               // the part of this run to fill
+    const int z = to - start < len[i] ? to - start : len[i];
+    if (z > a) {
+      GRect r;
+      switch (i) {
+        case 0:  r = GRect(cx + a, top, z - a, t); break;              // rightwards
+        case 1:  r = GRect(right - t, top + t + a, t, z - a); break;   // down
+        case 2:  r = GRect(right - t - z, bottom - t, z - a, t); break; // leftwards
+        case 3:  r = GRect(left, bottom - t - z, t, z - a); break;     // up
+        default: r = GRect(left + a, top, z - a, t); break;           // rightwards
+      }
+      graphics_fill_rect(ctx, r, 0, GCornerNone);
     }
-    int fill = (i < full) ? cell_w : (i == full ? partial : 0);
-    if (fill > 0) {
+    start += len[i];
+  }
+}
+
+// Rectangular screens: a frame of thickness t just inside the screen edge.
+static void draw_day_frame(GContext *ctx, GRect bounds, uint32_t ds, int t, GColor accent) {
+  const GRect o = grect_inset(bounds, GEdgeInsets(2));
+  const int len = frame_length(o, t);
+  const int done = (int)(ds * (uint32_t)len / 100000u);  // at most ~10^8: fits 32 bits
+  const int gap = t / 2;                                 // between sections
+#if defined(PBL_BW)
+  // Black & white has no grey: the rest of the day is a thin line along the
+  // middle of the frame instead.
+  const GRect mid = grect_inset(o, GEdgeInsets(t / 2));
+  const int mid_len = frame_length(mid, 1);
+#else
+  // An accent as dark as the track would disappear: use a light track then.
+  const GColor track = gcolor_equal(accent, COLOR_TRACK) ? GColorLightGray : COLOR_TRACK;
+#endif
+  for (int i = 0; i < 10; i++) {
+    const int from = i * len / 10 + gap / 2;
+    const int to = (i + 1) * len / 10 - (gap - gap / 2);
+#if defined(PBL_BW)
+    graphics_context_set_fill_color(ctx, COLOR_MAIN);
+    fill_frame_span(ctx, mid, 1, from * mid_len / len, to * mid_len / len);
+#else
+    graphics_context_set_fill_color(ctx, track);
+    fill_frame_span(ctx, o, t, from, to);
+#endif
+    if (done > from) {
       graphics_context_set_fill_color(ctx, accent);
-      graphics_fill_rect(ctx, GRect(cell.origin.x, cell.origin.y, fill, cell.size.h), 0, GCornerNone);
+      fill_frame_span(ctx, o, t, from, done < to ? done : to);
     }
   }
 }
@@ -537,11 +579,10 @@ static void draw_hand(GContext *ctx, GPoint c, int32_t angle, int length, int ta
 // Constant text, so nothing needs formatting each frame.
 static const char DIAL_LABELS[10][3] = { "10", "1", "2", "3", "4", "5", "6", "7", "8", "9" };
 
-#if !defined(PBL_ROUND) || LARGE_SCREEN  // used by the square dial and the font families
-static int iabs(int v) {
+// `inline`: no "unused function" warning on the watches that never call it.
+static inline int iabs(int v) {
   return v < 0 ? -v : v;
 }
-#endif
 
 #if !defined(PBL_ROUND)
 // Square dial. Along the ray at `angle`, the edge of a square with half-side
@@ -725,20 +766,21 @@ static void draw_digital(GContext *ctx, GRect full, GRect b, DecimalTime d, cons
   const bool ten = s_settings.hour_zero_ten;
   const int hour = (ten && d.h == 0) ? 10 : d.h;
 
+  // The day's progress around the edge; the text keeps clear of it. The
+  // frame and ring are drawn on the full screen: a Quick View simply covers
+  // their bottom part.
 #if defined(PBL_ROUND)
   const int ring = xl ? 10 : 7;
   draw_day_ring(ctx, full, d.ds, ring, f.accent);
-  const int avail_w = full.size.w - 2 * (ring + 8) - 12;
-  const int time_w = avail_w;
-  const int bar_h = 0;  // the ring replaces the bar
+  const int time_w = full.size.w - 2 * (ring + 8) - 12;
+  const int edge = 4;  // the ring curves away above and below the text
 #else
-  const int margin = 4;
-  const int avail_w = b.size.w - 2 * margin;
-  // On large screens the time's character cells may run to 2 px from the
-  // edge: the digits' own side spacing still leaves 4 px or more of black.
-  // Roboto's "10:08:88" on Pebble Time 2 needs this.
-  const int time_w = b.size.w - 2 * (xl ? 2 : margin);
-  const int bar_h = xl ? 12 : 8;
+  const int ring = xl ? 8 : 6;
+  draw_day_frame(ctx, full, d.ds, ring, f.accent);
+  const int edge = 2 + ring + 2;  // the frame's inset and thickness, and 2 px of black
+  // The time's character cells may reach that far: the digits' own side
+  // spacing leaves a few more pixels of black.
+  const int time_w = full.size.w - 2 * edge;
 #endif
 
   // Size for two hour digits all day when "10" is on, so the font stays put.
@@ -746,14 +788,13 @@ static void draw_digital(GContext *ctx, GRect full, GRect b, DecimalTime d, cons
   const int big_ink = font_ink(big);
   const int gap = xl ? 12 : 8;
 
-  // Stack: date / decimal time / day bar / normal time, centred vertically.
+  // Stack: date / decimal time / normal time, centred vertically.
   // First add up the height of what will be shown, then draw top to bottom.
   bool show_date = f.date, show_normal = f.normal_time;
-  int core = big_ink + (bar_h ? gap + bar_h : 0);
-  int block = core + (show_date ? small_ink + gap : 0) + (show_normal ? gap + small_ink : 0);
-  if (block > b.size.h - 8) {  // not enough room (Quick View): decimal time only
+  int block = big_ink + (show_date ? small_ink + gap : 0) + (show_normal ? gap + small_ink : 0);
+  if (block > b.size.h - 2 * edge) {  // not enough room (Quick View): decimal time only
     show_date = show_normal = false;
-    block = core;
+    block = big_ink;
   }
   int y = b.origin.y + (b.size.h - block) / 2;
   const int cx = b.origin.x + b.size.w / 2;
@@ -775,12 +816,6 @@ static void draw_digital(GContext *ctx, GRect full, GRect b, DecimalTime d, cons
   graphics_context_set_text_color(ctx, COLOR_MAIN);
   draw_big(ctx, main_text, big, cx, y);
   y += big_ink;
-
-#if !defined(PBL_ROUND)
-  y += gap;
-  draw_day_bar(ctx, GRect(b.origin.x + margin, y, avail_w, bar_h), d.ds, f.accent);
-  y += bar_h;
-#endif
 
   if (show_normal) {
     y += gap;

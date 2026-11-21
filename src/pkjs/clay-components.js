@@ -88,12 +88,9 @@ var swatchGroup = {
     '  display: block; width: 5rem; height: 5rem; border-radius: 0.25rem;',
     '  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3);',
     '}',
-    '.component-swatches .swatch input:checked + .swatch-chip {',
-    '  box-shadow: 0 0 0 3px #484848, 0 0 0 6px #ff4700;',
-    '}',
-    '.component-swatches .swatch-name { font-size: 0.9em; }',
-    '.component-swatches .swatch .swatch-name { padding-top: 0.45rem; color: #a4a4a4; }',
-    '.component-swatches .swatch input:checked ~ .swatch-name { color: #ffffff; }',
+    '.component-swatches input:checked + .swatch-chip { box-shadow: 0 0 0 3px #484848, 0 0 0 6px #ff4700; }',
+    '.component-swatches .swatch-name { padding-top: 0.45rem; font-size: 0.9em; color: #a4a4a4; }',
+    '.component-swatches input:checked ~ .swatch-name { color: #ffffff; }',
     // "Custom" spans both columns of its row and sits in the middle.
     '.component-swatches .swatch-custom { grid-column: 1 / -1; justify-self: center; }',
     // The moved colour row: this block already has the section's side padding.

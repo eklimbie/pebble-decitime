@@ -121,7 +121,8 @@ module.exports = [
         type: 'imagegroup',
         messageKey: 'Font',
         description: 'Used for all text: time, date, normal time and dial numerals. ' +
-          'The default is the original look: LECO for the time and numerals, Gothic for the date.',
+          'The default is the original look: LECO for the time and numerals, Gothic for the date. ' +
+          'Gothic has no large size, so its digital time is in Bitham.',
         columns: 1,
         defaultValue: '0',
         serializeValueAs: 'integer',
@@ -188,7 +189,7 @@ module.exports = [
         type: 'swatchgroup',
         messageKey: 'Accent',
         label: 'Accent',
-        description: 'Hour marks and second hand on the dial; the day bar on the digital display.',
+        description: 'Hour marks and second hand on the dial; the day\'s progress around the edge of the digital display.',
         defaultValue: '1',
         serializeValueAs: 'integer',
         options: [
